@@ -6,6 +6,9 @@ from modules import *
 
 
 class DiffusionModel(pl.LightningModule):
+    """
+    Basic Diffusion model, used for 32x32 inputs (padded MNIST, CIFAR)
+    """
     def __init__(self, in_size, t_range, img_depth):
         super().__init__()
         self.beta_small = 1e-4
