@@ -20,4 +20,4 @@ class Places365(Dataset):
 
     def __getitem__(self, item):
         img = self.dataset[item][0]
-        return (((img / 255.0) * 2.0) - 1.0).moveaxis(3, 1)
+        return ((img / 255.0) * 2.0) - 1.0
