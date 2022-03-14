@@ -1,5 +1,4 @@
 import os
-import torch
 from torch.utils.data import Dataset
 from torchvision.datasets import ImageFolder
 from torchvision import transforms
@@ -20,4 +19,4 @@ class Places365(Dataset):
 
     def __getitem__(self, item):
         img = self.dataset[item][0]
-        return ((img / 255.0) * 2.0) - 1.0
+        return (img * 2.0) - 1.0  # Convert the image to the range [-1, 1]
