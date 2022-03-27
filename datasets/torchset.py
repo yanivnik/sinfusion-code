@@ -1,10 +1,14 @@
 import torch
 from torch.utils.data import Dataset
-from torchvision.datasets import MNIST, FashionMNIST, CIFAR10, CelebA
+from torchvision.datasets import MNIST, FashionMNIST, CIFAR10
 from torchvision import transforms
 
 
-class DiffSet(Dataset):
+class TorchSet(Dataset):
+    """
+    A Wrapper class for easy-to-use datasets accesible from torchvision.
+    Currently supports MNIST, FashionMNIST, CIFAR10.
+    """
     def __init__(self, train, root='./data', dataset="MNIST"):
         transform = transforms.Compose([transforms.ToTensor()])
 
@@ -15,7 +19,7 @@ class DiffSet(Dataset):
         }
 
         train_dataset = datasets[dataset](
-            root , download=True, train=train, transform=transform
+            root, download=True, train=train, transform=transform
         )
 
         self.dataset_len = len(train_dataset.data)

@@ -5,6 +5,10 @@ from torchvision import transforms
 
 
 class Places365(Dataset):
+    """
+    A dataset wrapper for existing Places365 data.
+    Can be used with the pre-downloaded data, without requiring an additional download of the massive dataset.
+    """
     def __init__(self, train, root='./data'):
         transform = transforms.Compose([transforms.ToTensor()])
 
