@@ -14,8 +14,9 @@ class SingleSet(Dataset):
         transform = transforms.Compose([transforms.ToTensor()])
 
         imgs = Image.open(image_path)
-        imgs = resize(imgs, (256, 256))
         imgs = transform(imgs)
+        imgs = resize(imgs, (256, 256))
+
         if len(imgs.shape) == 3:
             imgs = imgs.unsqueeze(0)
 

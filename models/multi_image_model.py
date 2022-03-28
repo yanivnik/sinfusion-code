@@ -1,5 +1,8 @@
+import torch
+
 from base_diffusion_model import BaseDiffusionModel
 from modules import Up, Down, DoubleConv, SAWrapper, OutConv
+
 
 # TODO: REFACTOR AND DOCUMENT THESE CLASSES AND THEIR USAGES
 #       OR SIMPLY REMOVE THEM IF WE DECIDE WE DON'T NEED THE CODE
@@ -41,6 +44,10 @@ class DiffusionModel(BaseDiffusionModel):
         x = self.up3(x, x1) + self.pos_encoding(t, 64, 32)
         output = self.outc(x)
         return output
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=2e-4)
+        return optimizer
 
 
 # TODO REFACTOR INTO A SINGLE CLASS FOR ALL SIZES OF MODELS
@@ -92,3 +99,7 @@ class LargeDiffusionModel(BaseDiffusionModel):
         output = self.outc(x)
 
         return output
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=2e-4)
+        return optimizer

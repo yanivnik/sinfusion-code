@@ -84,5 +84,4 @@ class BaseDiffusionModel(pl.LightningModule):
         return
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=2e-4)
-        return optimizer
+        raise NotImplementedError()
