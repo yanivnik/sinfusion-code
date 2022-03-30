@@ -10,6 +10,18 @@ from scipy.ndimage import measurements, interpolation
 from scipy.io import loadmat
 import math
 
+# EXAMPLE FOR USING RANDOM_AUGMENT:
+# self.hr_father = random_augment(ims=self.hr_fathers_sources,
+#                                 base_scales=[1.0] + self.conf.scale_factors,
+#                                 leave_as_is_probability=self.conf.augment_leave_as_is_probability,
+#                                 no_interpolate_probability=self.conf.augment_no_interpolate_probability,
+#                                 min_scale=self.conf.augment_min_scale,
+#                                 # max_scale=self.conf.augment_min_scale,  # ([1.0] + self.conf.scale_factors)[len(self.hr_fathers_sources)-1],  TODO: change back!
+#                                 max_scale=([1.0] + self.conf.scale_factors)[len(self.hr_fathers_sources) - 1],
+#                                 allow_rotation=self.conf.augment_allow_rotation,
+#                                 scale_diff_sigma=self.conf.augment_scale_diff_sigma,
+#                                 shear_sigma=self.conf.augment_shear_sigma,
+#                                 crop_size=self.conf.crop_size)
 
 def random_augment(ims,
                    base_scales=None,
