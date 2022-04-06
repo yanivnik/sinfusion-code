@@ -1,14 +1,14 @@
-from tqdm import tqdm
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
-from diffusion_utils import extract, cosine_noise_schedule
+from pytorch_lightning import LightningModule
+from tqdm import tqdm
 
-import pytorch_lightning as pl
+from diffusion.diffusion_utils import extract, cosine_noise_schedule
 
 
-class GaussianDiffusion(nn.Module):
+class GaussianDiffusion(LightningModule):
     def __init__(self, model, *, channels=3, timesteps=1000):
         super().__init__()
         self.channels = channels
@@ -76,7 +76,7 @@ class GaussianDiffusion(nn.Module):
 
     @torch.no_grad()
     def p_sample(self, x, t, clip_denoised=True):
-        b, *_, device = *x.shape, x.device
+        b, *_ = x.shape
         model_mean, _, model_log_variance = self.p_mean_variance(x=x, t=t, clip_denoised=clip_denoised)
         noise = torch.randn_like(x)
         # no noise when t == 0
@@ -89,7 +89,7 @@ class GaussianDiffusion(nn.Module):
 
         img = torch.randn(sample_shape).cuda()
         for t in tqdm(reversed(range(0, self.num_timesteps)), desc='sampling loop time step', total=self.num_timesteps):
-            t_tensor = torch.full((batch_size, ), t, device=img.device, dtype=torch.long)
+            t_tensor = torch.full((batch_size, ), t, dtype=torch.long)
             img = self.p_sample(img, t_tensor)
         return img
 
@@ -113,5 +113,14 @@ class GaussianDiffusion(nn.Module):
 
     def forward(self, x, *args, **kwargs):
         b, c, h, w = x.shape
-        t = torch.randint(0, self.num_timesteps, (b,), device=x.device).long()
+        t = torch.randint(0, self.num_timesteps, (b,)).long()
         return self.p_losses(x, t, *args, **kwargs)
+
+    def training_step(self, batch):
+        loss = self.forward(batch)
+        self.log('train/loss', loss)
+        return loss
+
+    def configure_optimizers(self):
+        optim = torch.optim.Adam(self.parameters(), lr=2e-4)
+        return optim
