@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pytorch_lightning import LightningModule
-from tqdm import tqdm
 
 from diffusion.diffusion_utils import extract, cosine_noise_schedule
 
@@ -87,9 +86,9 @@ class GaussianDiffusion(LightningModule):
     def sample(self, image_size=(32, 32), batch_size=16):
         sample_shape = (batch_size, self.channels, image_size[0], image_size[1])
 
-        img = torch.randn(sample_shape).cuda()
-        for t in tqdm(reversed(range(0, self.num_timesteps)), desc='sampling loop time step', total=self.num_timesteps):
-            t_tensor = torch.full((batch_size, ), t, dtype=torch.long)
+        img = torch.randn(sample_shape, device=self.device)
+        for t in reversed(range(0, self.num_timesteps)):
+            t_tensor = torch.full((batch_size, ), t, dtype=torch.int64, device=self.device)
             img = self.p_sample(img, t_tensor)
         return img
 
@@ -112,8 +111,8 @@ class GaussianDiffusion(LightningModule):
         return F.mse_loss(noise, x_recon)
 
     def forward(self, x, *args, **kwargs):
-        b, c, h, w = x.shape
-        t = torch.randint(0, self.num_timesteps, (b,)).long()
+        batch_size = x.shape[0]
+        t = torch.randint(0, self.num_timesteps, (batch_size,), dtype=torch.int64, device=self.device)
         return self.p_losses(x, t, *args, **kwargs)
 
     def training_step(self, batch):
