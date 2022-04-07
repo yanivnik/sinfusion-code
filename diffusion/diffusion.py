@@ -10,6 +10,8 @@ from diffusion.diffusion_utils import extract, cosine_noise_schedule
 class GaussianDiffusion(LightningModule):
     def __init__(self, model, *, channels=3, timesteps=1000):
         super().__init__()
+
+        self.cur_epoch = 0
         self.channels = channels
         self.model = model
 
@@ -115,10 +117,23 @@ class GaussianDiffusion(LightningModule):
         t = torch.randint(0, self.num_timesteps, (batch_size,), dtype=torch.int64, device=self.device)
         return self.p_losses(x, t, *args, **kwargs)
 
-    def training_step(self, batch):
+    def training_step(self, batch, batch_idx):
+        self.cur_epoch += 1
+        if self.cur_epoch % 1000 == 0:
+            self.evaluate()
+
         loss = self.forward(batch)
         self.log('train/loss', loss)
         return loss
+
+    def evaluate(self):
+        from PIL import Image
+        # Take a single sample
+        sample = self.sample(image_size=(64, 64), batch_size=1)
+        sample = (sample.clamp(-1, 1) + 1) / 2
+        sample = (sample * 255).type(torch.uint8).moveaxis(1, 3).cpu().numpy()
+        im = Image.fromarray(sample[0])
+        im.save(f"{self.logger.log_dir}/sample_{self.cur_epoch}.png")
 
     def configure_optimizers(self):
         optim = torch.optim.Adam(self.parameters(), lr=2e-4)
