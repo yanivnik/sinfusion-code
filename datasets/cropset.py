@@ -1,6 +1,21 @@
+import random
+
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
+
+
+class RandomScaleResize(object):
+    def __init__(self, min_scale=0.7, max_scale=1.0):
+        self.min_scale = min_scale
+        self.max_scale = max_scale
+
+    def __call__(self, x):
+        if random.random() < 0.2:  # TODO CONVERT TO CONSTANT IN CONFIG
+            return x
+        scale = self.min_scale + (self.max_scale - self.min_scale) * random.random()
+        resized_size = (int(x.size[0] * scale), int(x.size[0] * scale))
+        return transforms.functional.resize(x, resized_size)
 
 
 class CropSet(Dataset):
@@ -13,12 +28,12 @@ class CropSet(Dataset):
         # TODO: Think about fine tuning these transformations.
         #   Maybe a rotation that happens all the time isn't a good idea (learn from zssr.random_augment).
         self.transform = transforms.Compose([
-            # transforms.RandomHorizontalFlip(),
+            transforms.RandomHorizontalFlip(),
             # transforms.RandomRotation((0, 180), transforms.InterpolationMode.BICUBIC),
-            # transforms.RandomResizedCrop TODO DO THE RESIZE WITH resize_right (PROBABLY BETTER)
+            RandomScaleResize(),
             transforms.RandomCrop(self.crop_size, pad_if_needed=True, padding_mode='reflect'),
             transforms.ToTensor(),
-            transforms.Lambda(lambda img: (img * 2) - 1)
+            transforms.Lambda(lambda img: (img[:3, ] * 2) - 1)
         ])
 
         self.img = Image.open(image_path)
@@ -31,7 +46,7 @@ class CropSet(Dataset):
         # self.size = h
 
     def __len__(self):
-        return 1  # TODO CHANGE THIS?
+        return 5000  # TODO CHANGE THIS? THIS SHOULD BE A HIGH NUMBER BECAUSE OTHERWISE THERE IS A SHIT-TON OF OVERHEAD FROM PL
 
     def __getitem__(self, item):
         return self.transform(self.img)

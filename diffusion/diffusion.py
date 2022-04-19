@@ -156,4 +156,13 @@ class GaussianDiffusion(LightningModule):
 
     def configure_optimizers(self):
         optim = torch.optim.Adam(self.parameters(), lr=2e-4)
-        return optim
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(
+            optim,
+            milestones=[5, 10, 15],
+            gamma=0.5)
+
+        return {
+            "optimizer": optim,
+            "lr_scheduler": scheduler
+        }
+        # return optim
