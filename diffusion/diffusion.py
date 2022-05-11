@@ -1,38 +1,54 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from PIL import Image
 from pytorch_lightning import LightningModule
 
-from diffusion.diffusion_utils import extract, cosine_noise_schedule
+from diffusion.diffusion_utils import extract, cosine_noise_schedule, save_diffusion_sample
 
 
 class GaussianDiffusion(LightningModule):
-    def __init__(self, model, *, channels=3, timesteps=1000, sample_every_n_steps=1000, sample_size=(32, 32)):
+    def __init__(self, model, channels=3, timesteps=1000, noising_timesteps_ratio=1.0,
+                 auto_sample=True, sample_every_n_steps=1000, sample_size=(32, 32)):
         """
         Args:
-            model (torch.nn.Module): The model used to predict noise for reverse diffusion.
-            channels (int): The amount of input channels in each image.
-            timesteps (int): The amount of diffusion timesteps to train the model on.
-            sample_every_n_steps (int): The amount of global steps (step == training batch) after which the model is
-                                        sampled from.
+            model (torch.nn.Module):
+                The model used to predict noise for reverse diffusion.
+            channels (int):
+                The amount of input channels in each image.
+            timesteps (int):
+                The amount of timesteps used to generate the noising schedule.
+            noising_timesteps_ratio (float):
+                The percent of the timesteps to use for training and sampling.
+                By default, this will be equal to 1.0 and the model will use the entire noise schedule
+                during training and sampling. A different value can be passed if, for example, we want the
+                model to be trained for partial denoising only. For example, if timesteps=1000 and the ratio=0.5,
+                the model will be trained only on the first 500 diffusion steps.
+            auto_sample (bool):
+                Should the model perform sampling during training.
+                If False, the following sampling parameters are ignored.
+            sample_every_n_steps (int):
+                The amount of global steps (step == training batch) after which the model is
+                sampled from.
+            sample_size (tuple):
+                The spatial dimensions of the sample during auto sampling.
         """
         super().__init__()
 
         self.step_counter = 0  # Overall step counter used to sample every n global steps
+        self.auto_sample = auto_sample
         self.sample_every_n_steps = sample_every_n_steps
         self.sample_size = sample_size
 
         self.channels = channels
         self.model = model
 
+        assert 0 < noising_timesteps_ratio <= 1.0
         betas = cosine_noise_schedule(timesteps)
+        self.num_timesteps = int(betas.shape[0] * noising_timesteps_ratio)
 
         alphas = 1. - betas
         alphas_hat = np.cumprod(alphas, axis=0)
         alphas_hat_prev = np.append(1., alphas_hat[:-1])
-
-        self.num_timesteps = int(betas.shape[0])
 
         self.register_buffer('betas', torch.tensor(betas, dtype=torch.float32))
         self.register_buffer('alphas_hat', torch.tensor(alphas_hat, dtype=torch.float32))
@@ -95,12 +111,13 @@ class GaussianDiffusion(LightningModule):
         return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
 
     @torch.no_grad()
-    def sample(self, image_size=(32, 32), batch_size=16):
+    def sample(self, image_size=(32, 32), batch_size=16, custom_initial_img=None, custom_timesteps=None):
         image_size = image_size if isinstance(image_size, tuple) else (image_size, image_size)
         sample_shape = (batch_size, self.channels, image_size[0], image_size[1])
 
-        img = torch.randn(sample_shape, device=self.device)
-        for t in reversed(range(0, self.num_timesteps)):
+        timesteps = custom_timesteps if custom_timesteps is not None else self.num_timesteps
+        img = custom_initial_img if custom_initial_img is not None else torch.randn(sample_shape, device=self.device)
+        for t in reversed(range(0, timesteps)):
             t_tensor = torch.full((batch_size, ), t, dtype=torch.int64, device=self.device)
             img = self.p_sample(img, t_tensor)
         return img
@@ -115,11 +132,8 @@ class GaussianDiffusion(LightningModule):
             sample_size (tuple or int): The spatial dimensions of the image. If an int is passed, it is used for
                                         both spatial dimensions.
         """
-        # TODO SUPPORT MULTIPLE BATCH SAVING
         sample = self.sample(image_size=sample_size, batch_size=1)
-        sample = (sample.clamp(-1, 1) + 1) / 2
-        sample = (sample * 255).type(torch.uint8).moveaxis(1, 3).cpu().numpy()
-        Image.fromarray(sample[0]).save(output_path)
+        save_diffusion_sample(sample, output_path)
 
     def q_sample(self, x_start, t, noise=None):
         if noise is None:
@@ -146,7 +160,7 @@ class GaussianDiffusion(LightningModule):
 
     def training_step(self, batch, batch_idx):
         self.step_counter += 1
-        if self.step_counter % self.sample_every_n_steps == 0:
+        if self.auto_sample and self.step_counter % self.sample_every_n_steps == 0:
             self.sample_and_save_output(f"{self.logger.log_dir}/sample_{self.step_counter}.png",
                                         sample_size=self.sample_size)
 

@@ -12,6 +12,7 @@ from bisect import bisect
 
 
 flatten = lambda x: list(itertools.chain.from_iterable(x))
+two_tuple = lambda x: x if isinstance(x, (list, tuple)) else (x, x)
 
 ###############################################################################
 #                   BLA

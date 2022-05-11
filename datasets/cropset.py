@@ -1,13 +1,12 @@
 import random
 
 import torch
-from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 
 
 class RandomScaleResize(object):
-    def __init__(self, min_scale=0.5, max_scale=1.0):
+    def __init__(self, min_scale=0.7, max_scale=1.0):
         self.min_scale = min_scale
         self.max_scale = max_scale
 
@@ -23,7 +22,12 @@ class CropSet(Dataset):
     """
     A dataset comprised of crops of various augmentation of a single image.
     """
-    def __init__(self, image_path, crop_size=(64, 64)):
+    def __init__(self, image, crop_size=(64, 64)):
+        """
+        Args:
+            image (PIL.Image): The image to generate crops from.
+            crop_size (tuple(int, int)): The spatial dimensions of the crops to be taken.
+        """
         self.crop_size = crop_size
 
         self.transform = transforms.Compose([
@@ -34,10 +38,10 @@ class CropSet(Dataset):
             transforms.Lambda(lambda img: (img[:3, ] * 2) - 1)
         ])
 
-        self.img = Image.open(image_path)
+        self.img = image
 
     def __len__(self):
-        return 5000  # TODO CHANGE THIS? THIS SHOULD BE A HIGH NUMBER BECAUSE OTHERWISE THERE IS A SHIT-TON OF OVERHEAD FROM PL
+        return 5000  # This is a high number to avoid overhead for pytorch_lightning
 
     def __getitem__(self, item):
         return self.transform(self.img)
