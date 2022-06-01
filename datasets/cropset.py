@@ -16,10 +16,10 @@ class CropSet(Dataset):
         self.crop_size = crop_size
 
         self.transform = transforms.Compose([
+            transforms.ToTensor(),
             transforms.RandomHorizontalFlip(),
             RandomScaleResize(),
             transforms.RandomCrop(self.crop_size, pad_if_needed=True, padding_mode='reflect'),
-            transforms.ToTensor(),
             transforms.Lambda(lambda img: (img[:3, ] * 2) - 1)
         ])
 

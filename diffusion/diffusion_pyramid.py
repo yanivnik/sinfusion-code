@@ -46,8 +46,7 @@ class GaussianDiffusionPyramid(object):
         # Generate image pyramid
         self.images = [Image.open(image_path)]
         for ratio in self.size_ratios:
-            image_size = (int(self.images[0].size[0] * ratio), int(self.images[0].size[1] * ratio))
-            self.images.insert(0, self.images[0].resize(image_size))
+            self.images.insert(0, resize(self.images[0], scale_factors=ratio))
 
         if isinstance(timesteps, Iterable):
             assert len(timesteps) == levels
@@ -98,7 +97,8 @@ class GaussianDiffusionPyramid(object):
         sample_size = sample_size if isinstance(sample_size, tuple) else (sample_size, sample_size)
         sample_size_per_level = [sample_size]
         for ratio in reversed(self.size_ratios):
-            sample_size_per_level.insert(0, (int(sample_size_per_level[0][0] * ratio), int(sample_size_per_level[0][1] * ratio)))
+            sample_size_per_level.insert(0, (int(sample_size_per_level[0][0] * ratio),
+                                             int(sample_size_per_level[0][1] * ratio)))
 
         # In the coarsest level, pure noise is sampled
         sample = self.diffusion_models[0].sample(image_size=sample_size_per_level[0], batch_size=batch_size)
