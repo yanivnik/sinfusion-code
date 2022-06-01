@@ -2,6 +2,10 @@
 
 import warnings
 from math import ceil
+
+import PIL
+import torchvision.transforms
+
 import common_utils.interp_methods as interp_methods
 
 
@@ -32,6 +36,11 @@ if numpy is None and torch is None:
 def resize(input, scale_factors=None, out_shape=None,
            interp_method=interp_methods.cubic, support_sz=None,
            antialiasing=True):
+    # Support PIL.Image format as well. Convert it to torch.tensor and back
+    input_is_pil = isinstance(input, PIL.Image.Image)
+    if input_is_pil:
+        input = torchvision.transforms.ToTensor()(input)
+
     # get properties of the input tensor
     in_shape, n_dims = input.shape, input.ndim
 
@@ -60,6 +69,8 @@ def resize(input, scale_factors=None, out_shape=None,
     # when using pytorch, we need to know what is the input tensor device
     if fw is torch:
         device = input.device
+    else:
+        device = None
 
     # output begins identical to input and changes with each iteration
     output = input
@@ -76,6 +87,10 @@ def resize(input, scale_factors=None, out_shape=None,
         # aggreagate
         output = apply_weights(output, field_of_view, weights, dim, n_dims,
                                fw)
+
+    if input_is_pil:
+        output = torchvision.transforms.ToPILImage()(output)
+
     return output
 
 
