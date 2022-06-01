@@ -1,8 +1,7 @@
-import torch
 import torch.nn as nn
+from einops import rearrange
 
 from models.modules import SinusoidalPosEmb
-from einops import rearrange
 
 
 class ZSSRNet(nn.Module):
@@ -11,13 +10,13 @@ class ZSSRNet(nn.Module):
     For more information and code, see - https://github.com/assafshocher/ZSSR).
     """
 
-    def __init__(self, depth=8, filters_per_layer=64, kernel_size=3):
+    def __init__(self, in_channels=3, out_channels=3, depth=8, filters_per_layer=64, kernel_size=3):
         super().__init__()
 
         # First layer
         layers = [
-            nn.Conv2d(3, filters_per_layer, kernel_size=kernel_size, padding=kernel_size // 2, padding_mode='replicate',
-                      bias=False),
+            nn.Conv2d(in_channels, filters_per_layer, kernel_size=kernel_size, padding=kernel_size // 2,
+                      padding_mode='replicate', bias=False),
             nn.ReLU()
         ]
 
@@ -28,7 +27,7 @@ class ZSSRNet(nn.Module):
             layers.append(nn.ReLU())
 
         # Last layer (no activation)
-        layers.append(nn.Conv2d(filters_per_layer, 3, kernel_size=kernel_size,
+        layers.append(nn.Conv2d(filters_per_layer, out_channels, kernel_size=kernel_size,
                                 padding=kernel_size // 2, padding_mode='replicate', bias=False))
 
         self.layers = layers

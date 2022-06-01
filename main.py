@@ -36,29 +36,28 @@ def train_single_diffusion():
 
 def train_pyramid_diffusion():
     image_name = 'balloons.png'
-    levels = 3
+    levels = 5
     coarsest_size_ratio = 0.25
-    timesteps_per_level = [1000, 150, 150]#, 150, 150, 150, 150, 150]
-    training_steps_per_level = [100_000] + [20_000] * (levels - 1)
+    timesteps_per_level = [1000, 500, 500, 500, 500]
+    training_steps_per_level = [100_000] + [100_000] * (levels - 1)
     sample_batch_size = 8
     tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/pyramid/", name=image_name)
 
     print('Training generation pyramid')
     pyramid = GaussianDiffusionPyramid(f'./images/{image_name}', levels=levels,
-                                       size_ratios=coarsest_size_ratio ** (1.0 / (levels - 1)),
-                                       timesteps=timesteps_per_level,
-                                       models=None, logger=tb_logger)
+                                         size_ratios=coarsest_size_ratio ** (1.0 / (levels - 1)),
+                                         timesteps=timesteps_per_level,
+                                         models=None, logger=tb_logger)
     pyramid.train(training_steps_per_level)
 
     print('Sampling generated images from pyramid')
-    samples = pyramid.sample((256, 256), sample_batch_size)
+    samples = pyramid.sample((128, 128), sample_batch_size)
     save_diffusion_sample(samples, f"{tb_logger.log_dir}/sample_.png")
 
 
 def main():
-    # TODO ADD EXTERNAL CONFIGURATION SUPPORTch
-    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
-    # train_single_diffusion()
+    # TODO ADD EXTERNAL CONFIGURATION SUPPORT
+    os.environ['CUDA_VISIBLE_DEVICES'] = '2'
     train_pyramid_diffusion()
 
 

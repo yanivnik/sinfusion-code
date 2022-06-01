@@ -8,6 +8,7 @@ from diffusion.diffusion_utils import extract, cosine_noise_schedule, save_diffu
 
 class GaussianDiffusion(LightningModule):
     def __init__(self, model, channels=3, timesteps=1000, noising_timesteps_ratio=1.0,
+                 initial_lr=2e-4,
                  auto_sample=True, sample_every_n_steps=1000, sample_size=(32, 32)):
         """
         Args:
@@ -23,6 +24,8 @@ class GaussianDiffusion(LightningModule):
                 during training and sampling. A different value can be passed if, for example, we want the
                 model to be trained for partial denoising only. For example, if timesteps=1000 and the ratio=0.5,
                 the model will be trained only on the first 500 diffusion steps.
+            initial_lr (float):
+                The initial learning rate for the diffusion training.
             auto_sample (bool):
                 Should the model perform sampling during training.
                 If False, the following sampling parameters are ignored.
@@ -41,6 +44,7 @@ class GaussianDiffusion(LightningModule):
 
         self.channels = channels
         self.model = model
+        self.initial_lr = initial_lr
 
         assert 0 < noising_timesteps_ratio <= 1.0
         betas = cosine_noise_schedule(timesteps)
@@ -92,7 +96,7 @@ class GaussianDiffusion(LightningModule):
         posterior_log_variance_clipped = extract(self.posterior_log_variance_clipped, t, x_t.shape)
         return posterior_mean, posterior_variance, posterior_log_variance_clipped
 
-    def p_mean_variance(self, x, t, clip_denoised: bool):
+    def p_mean_variance(self, x, t, clip_denoised):
         x_recon = self.predict_start_from_noise(x, t=t, noise=self.model(x, t))
 
         if clip_denoised:
@@ -136,6 +140,14 @@ class GaussianDiffusion(LightningModule):
         save_diffusion_sample(sample, output_path)
 
     def q_sample(self, x_start, t, noise=None):
+        """
+        Perform forward diffusion (noising) in a single step.
+        This method returns x_t, which is x_0 noised for t timesteps.
+
+        Args:
+            x_start (torch.Tensor): Represents the original image (x_0).
+            t (torch.Tensor): The timestep that measures
+        """
         if noise is None:
             noise = torch.randn_like(x_start)
 
@@ -144,19 +156,21 @@ class GaussianDiffusion(LightningModule):
             extract(self.sqrt_one_minus_alphas_hat, t, x_start.shape) * noise
         )
 
-    def p_losses(self, x_start, t, noise=None):
-        if noise is None:
-            noise = torch.randn_like(x_start)
-
-        x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
-        x_recon = self.model(x_noisy, t)
-
-        return F.mse_loss(noise, x_recon)
-
     def forward(self, x, *args, **kwargs):
         batch_size = x.shape[0]
+
+        # Sample t uniformly
         t = torch.randint(0, self.num_timesteps, (batch_size,), dtype=torch.int64, device=self.device)
-        return self.p_losses(x, t, *args, **kwargs)
+
+        # Generate white noise
+        noise = torch.randn_like(x)
+
+        # Produce x_t (noisy version of input after t noising steps)
+        x_noisy = self.q_sample(x_start=x, t=t, noise=noise)
+
+        # Attempt to reconstruct white noise that was used in forward process
+        noise_recon = self.model(x_noisy, t)
+        return F.mse_loss(noise, noise_recon)
 
     def training_step(self, batch, batch_idx):
         self.step_counter += 1
@@ -169,14 +183,13 @@ class GaussianDiffusion(LightningModule):
         return loss
 
     def configure_optimizers(self):
-        optim = torch.optim.Adam(self.parameters(), lr=2e-4)
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            optim,
-            milestones=[5, 10, 15],
-            gamma=0.5)
+        optim = torch.optim.Adam(self.parameters(), lr=self.initial_lr)
+        #scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        #    optim,
+        #    milestones=[5, 10, 15],
+        #    gamma=0.5)
 
         return {
             "optimizer": optim,
-            "lr_scheduler": scheduler
+        #    "lr_scheduler": scheduler
         }
-        # return optim
