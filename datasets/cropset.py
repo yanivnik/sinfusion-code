@@ -7,7 +7,7 @@ class CropSet(Dataset):
     """
     A dataset comprised of crops of various augmentation of a single image.
     """
-    def __init__(self, image, crop_size=(64, 64)):
+    def __init__(self, image, crop_size):
         """
         Args:
             image (PIL.Image): The image to generate crops from.

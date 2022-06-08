@@ -1,3 +1,4 @@
+from config import parse_cmdline_args_to_config, log_config, cfg
 import os
 
 import pytorch_lightning as pl
@@ -5,8 +6,8 @@ from PIL import Image
 from torch.utils.data import DataLoader
 
 from datasets.cropset import CropSet
-from diffusion.diffusion import GaussianDiffusion
-from diffusion.diffusion_pyramid import GaussianDiffusionPyramid
+from diffusion.diffusion import Diffusion
+from diffusion.diffusion_pyramid_sr import SRDiffusionPyramid
 from diffusion.diffusion_utils import save_diffusion_sample
 from models.zssr import ZSSRNet
 
@@ -19,46 +20,54 @@ def train_single_diffusion():
     image_name = 'balloons.png'
 
     # Create datasets and data loaders
-    train_dataset = CropSet(image=Image.open(f'./images/{image_name}'), crop_size=(32, 32))
+    train_dataset = CropSet(image=Image.open(f'./images/{image_name}'), crop_size=(cfg.crop_size, cfg.crop_size))
     train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=4, shuffle=True)
 
     # Create model and trainer
-    model = ZSSRNet(filters_per_layer=64, kernel_size=3)
-    diffusion = GaussianDiffusion(model, channels=3, timesteps=diffusion_timesteps, sample_size=(64, 64),
-                                  sample_every_n_steps=1000)
+    model = ZSSRNet(filters_per_layer=cfg.network_filters)
+    diffusion = Diffusion(model, channels=3, timesteps=diffusion_timesteps, sample_size=(cfg.crop_size * 2, cfg.crop_size * 2),
+                          sample_every_n_steps=1000, auto_sample=False)
+
+    wandb_logger = pl.loggers.WandbLogger(project="single-image-diffusion")
     tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/", name=image_name)
     trainer = pl.Trainer(max_steps=training_steps, log_every_n_steps=10, gpus=1, auto_select_gpus=True,
-                         logger=tb_logger)
+                         logger=wandb_logger)
 
     # Train model (samples are generated during training)
     trainer.fit(diffusion, train_loader)
 
 
 def train_pyramid_diffusion():
-    image_name = 'balloons.png'
-    levels = 5
-    coarsest_size_ratio = 0.25
-    timesteps_per_level = [1000, 500, 500, 500, 500]
-    training_steps_per_level = [100_000] + [100_000] * (levels - 1)
-    sample_batch_size = 8
-    tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/pyramid/", name=image_name)
+    training_steps_per_level = [100_000] * cfg.pyramid_levels
+    sample_batch_size = 16
+
+    wandb_logger = pl.loggers.WandbLogger(project="single-image-diffusion")
+    tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/pyramid/", name=cfg.image_name)
 
     print('Training generation pyramid')
-    pyramid = GaussianDiffusionPyramid(f'./images/{image_name}', levels=levels,
-                                         size_ratios=coarsest_size_ratio ** (1.0 / (levels - 1)),
-                                         timesteps=timesteps_per_level,
-                                         models=None, logger=tb_logger)
-    pyramid.train(training_steps_per_level)
+    pyramid = SRDiffusionPyramid(f'./images/{cfg.image_name}',
+                                 levels=cfg.pyramid_levels,
+                                 size_ratios=cfg.pyramid_coarsest_ratio ** (1.0 / (cfg.pyramid_levels - 1)),
+                                 timesteps=cfg.diffusion_timesteps,
+                                 crop_size=cfg.crop_size,
+                                 network_filters=cfg.network_filters,
+                                 logger=tb_logger) # TODO HANDLE WANDB
+    pyramid.train(training_steps_per_level, log_progress=cfg.log_progress)
 
     print('Sampling generated images from pyramid')
-    samples = pyramid.sample((128, 128), sample_batch_size)
-    save_diffusion_sample(samples, f"{tb_logger.log_dir}/sample_.png")
+    samples = pyramid.sample((186, 248), sample_batch_size, debug=True)
+    save_diffusion_sample(samples, f"{tb_logger.log_dir}/sample_.png", wandb_logger)
 
 
 def main():
-    # TODO ADD EXTERNAL CONFIGURATION SUPPORT
-    os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+    parse_cmdline_args_to_config()
+
+    if 'CUDA_VISIBLE_DEVICES' not in os.environ:
+        os.environ['CUDA_VISIBLE_DEVICES'] = cfg.available_gpus
+
+    log_config()
     train_pyramid_diffusion()
+    #train_single_diffusion()
 
 
 if __name__ == '__main__':

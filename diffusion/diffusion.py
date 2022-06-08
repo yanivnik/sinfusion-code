@@ -6,7 +6,7 @@ from pytorch_lightning import LightningModule
 from diffusion.diffusion_utils import extract, cosine_noise_schedule, save_diffusion_sample
 
 
-class GaussianDiffusion(LightningModule):
+class Diffusion(LightningModule):
     def __init__(self, model, channels=3, timesteps=1000, noising_timesteps_ratio=1.0,
                  initial_lr=2e-4,
                  auto_sample=True, sample_every_n_steps=1000, sample_size=(32, 32)):
@@ -36,6 +36,8 @@ class GaussianDiffusion(LightningModule):
                 The spatial dimensions of the sample during auto sampling.
         """
         super().__init__()
+
+        self.save_hyperparameters()
 
         self.step_counter = 0  # Overall step counter used to sample every n global steps
         self.auto_sample = auto_sample
@@ -184,6 +186,7 @@ class GaussianDiffusion(LightningModule):
 
     def configure_optimizers(self):
         optim = torch.optim.Adam(self.parameters(), lr=self.initial_lr)
+        # TODO SUPPORT SCHEDULER
         #scheduler = torch.optim.lr_scheduler.MultiStepLR(
         #    optim,
         #    milestones=[5, 10, 15],
