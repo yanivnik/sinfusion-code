@@ -1,10 +1,10 @@
-from config import parse_cmdline_args_to_config, log_config, cfg
 import os
 
 import pytorch_lightning as pl
-from PIL import Image
 from torch.utils.data import DataLoader
 
+from common_utils.ben_image import imread
+from config import parse_cmdline_args_to_config, log_config, cfg
 from datasets.cropset import CropSet
 from diffusion.diffusion import Diffusion
 from diffusion.diffusion_pyramid_sr import SRDiffusionPyramid
@@ -17,7 +17,7 @@ def train_single_diffusion():
     training_steps = 50_000
 
     # Create datasets and data loaders
-    train_dataset = CropSet(image=Image.open(f'./images/{cfg.image_name}'), crop_size=(cfg.crop_size, cfg.crop_size))
+    train_dataset = CropSet(image=imread(f'./images/{cfg.image_name}'), crop_size=(cfg.crop_size, cfg.crop_size))
     train_loader = DataLoader(train_dataset, batch_size=1, num_workers=4, shuffle=True)
 
     # Create model and trainer
@@ -36,7 +36,7 @@ def train_single_diffusion():
 
 
 def train_pyramid_diffusion():
-    training_steps_per_level = [35_000] * cfg.pyramid_levels
+    training_steps_per_level = [30_000] + [100_000] * (cfg.pyramid_levels - 1)
     sample_batch_size = 16
 
     wandb_logger = pl.loggers.WandbLogger(project="single-image-diffusion")
