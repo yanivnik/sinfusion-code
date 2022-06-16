@@ -15,7 +15,6 @@ class CropSet(Dataset):
         self.crop_size = crop_size
 
         transform_sequence = [
-            transforms.ToTensor(),
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(self.crop_size, pad_if_needed=False),
             transforms.Lambda(lambda img: (img[:3, ] * 2) - 1)

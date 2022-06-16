@@ -2,8 +2,8 @@ import os
 
 import pytorch_lightning as pl
 import torch
-from PIL import Image
 
+from common_utils.ben_image import imread
 from common_utils.resize_right import resize
 from datasets.cropset import CropSet
 from diffusion.diffusion import Diffusion
@@ -44,8 +44,8 @@ class DiffusionPyramid(object):
         self.crop_size = (crop_size, crop_size)
 
         # Generate image pyramid
-        self.images = [Image.open(image_path)]
-        for ratio in self.size_ratios:
+        self.images = [imread(image_path)]
+        for ratio in self.size_ratios[::-1]:
             self.images.insert(0, resize(self.images[0], scale_factors=ratio))
 
         self.logger = logger
@@ -87,12 +87,13 @@ class DiffusionPyramid(object):
         training_steps = get_pyramid_parameter_as_list(training_steps, self.levels)
         for level in range(self.levels):
             loader = torch.utils.data.DataLoader(self.datasets[level], batch_size=1)
-            model_checkpoint_callback = pl.callbacks.ModelCheckpoint(filename=f'level={level}-' + '{step}')
+            callbacks = [pl.callbacks.ModelCheckpoint(filename=f'level={level}-' + '{step}'),
+                         pl.callbacks.ModelSummary(max_depth=-1)]
             trainer = pl.Trainer(logger=self.logger,
                                  max_steps=training_steps[level],
                                  gpus=1,
                                  auto_select_gpus=True,
-                                 callbacks=[model_checkpoint_callback],
+                                 callbacks=callbacks,
                                  enable_progress_bar=log_progress)
             trainer.fit(self.diffusion_models[level], loader)
 
