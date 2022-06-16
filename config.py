@@ -2,30 +2,29 @@ import argparse
 import sys
 
 
-# TODO DOCUMENT
 class Config:
     # Constant configuration options
     project_name = 'single-image-diffusion'
     image_name = 'balloons.png'
 
     # Deployment configuration options
-    log_progress = True
-    available_gpus = '3'
+    log_progress = True     # Should loggers log training progress bar
+    available_gpus = '3'    # list of available gpus (in CUDA_VISIBLE_DEVICES format)
 
     # Diffusion configuration options
-    diffusion_timesteps = 1000
+    diffusion_timesteps = 500
 
     # Backbone model and dataset configuration options
-    network_filters = 64
-    crop_size = 32
+    network_filters = 64    # Amount of filters in backbone network conv layers
+    crop_size = 19
 
     # Optimization configuration options
     initial_lr = 0.0002
-    lr_schedule = 'single'
+    lr_schedule = 'single'  # Learning rate scheduling strategy. TODO IMPLEMENT USAGE.
 
     # Generation pyramid configuration options
-    pyramid_levels = 4
-    pyramid_coarsest_ratio = 0.135
+    pyramid_levels = 5
+    pyramid_coarsest_ratio = 0.135  # The size ratio between the image in the coarsest level and the original image
 
     def __init__(self):
         pass
@@ -65,6 +64,8 @@ def parse_cmdline_args_to_config():
 
 
 # Pre-made configurations
-SR_PYRAMID_CONFIG = Config()
-SR_PYRAMID_CONFIG.pyramid_levels = 4
-SR_PYRAMID_CONFIG.diffusion_timesteps = 1000
+BALLOONS_PYRAMID_CONFIG = Config()
+BALLOONS_PYRAMID_CONFIG.pyramid_levels = 5
+BALLOONS_PYRAMID_CONFIG.diffusion_timesteps = 500
+BALLOONS_PYRAMID_CONFIG.crop_size = 20
+BALLOONS_PYRAMID_CONFIG.pyramid_coarsest_ratio = 0.135

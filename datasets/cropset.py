@@ -1,6 +1,5 @@
 from torch.utils.data import Dataset
 from torchvision import transforms
-from datasets.transforms import RandomScaleResize
 
 
 class CropSet(Dataset):
@@ -15,14 +14,14 @@ class CropSet(Dataset):
         """
         self.crop_size = crop_size
 
-        self.transform = transforms.Compose([
+        transform_sequence = [
             transforms.ToTensor(),
             transforms.RandomHorizontalFlip(),
-            RandomScaleResize(),
-            transforms.RandomCrop(self.crop_size, pad_if_needed=True, padding_mode='reflect'),
+            transforms.RandomCrop(self.crop_size, pad_if_needed=False),
             transforms.Lambda(lambda img: (img[:3, ] * 2) - 1)
-        ])
+        ]
 
+        self.transform = transforms.Compose(transform_sequence)
         self.img = image
 
     def __len__(self):
