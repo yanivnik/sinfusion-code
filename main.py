@@ -14,31 +14,29 @@ from models.zssr import ZSSRNet
 
 def train_single_diffusion():
     # Training hyperparameters
-    diffusion_timesteps = 1000
-    training_steps = 100_000
-    batch_size = 1  # Each batch contains a single crop, since the batch is actually made of the patches within the crop
-    image_name = 'balloons.png'
+    training_steps = 50_000
 
     # Create datasets and data loaders
-    train_dataset = CropSet(image=Image.open(f'./images/{image_name}'), crop_size=(cfg.crop_size, cfg.crop_size))
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=4, shuffle=True)
+    train_dataset = CropSet(image=Image.open(f'./images/{cfg.image_name}'), crop_size=(cfg.crop_size, cfg.crop_size))
+    train_loader = DataLoader(train_dataset, batch_size=1, num_workers=4, shuffle=True)
 
     # Create model and trainer
     model = ZSSRNet(filters_per_layer=cfg.network_filters)
-    diffusion = Diffusion(model, channels=3, timesteps=diffusion_timesteps, sample_size=(cfg.crop_size * 2, cfg.crop_size * 2),
-                          sample_every_n_steps=1000, auto_sample=False)
-
+    diffusion = Diffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, sample_size=(186, 248),
+                          sample_every_n_steps=1000, auto_sample=True)
+    model_callbacks = [pl.callbacks.ModelCheckpoint(filename=f'single-level-' + '{step}'),
+                       pl.callbacks.ModelSummary(max_depth=-1)]
     wandb_logger = pl.loggers.WandbLogger(project="single-image-diffusion")
-    tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/", name=image_name)
+    tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/", name=cfg.image_name)
     trainer = pl.Trainer(max_steps=training_steps, log_every_n_steps=10, gpus=1, auto_select_gpus=True,
-                         logger=wandb_logger)
+                         logger=tb_logger, callbacks=model_callbacks)
 
     # Train model (samples are generated during training)
     trainer.fit(diffusion, train_loader)
 
 
 def train_pyramid_diffusion():
-    training_steps_per_level = [100_000] * cfg.pyramid_levels
+    training_steps_per_level = [35_000] * cfg.pyramid_levels
     sample_batch_size = 16
 
     wandb_logger = pl.loggers.WandbLogger(project="single-image-diffusion")
