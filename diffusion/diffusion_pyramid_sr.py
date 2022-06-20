@@ -18,17 +18,17 @@ class SRDiffusionPyramid(DiffusionPyramid):
     while the rest of the layers use a conditional diffusion model to add high frequencies to the generated images,
     thus increasing the resolution of the generated images.
     """
-    def __init__(self, image_path, levels, size_ratios, timesteps, crop_size, network_filters, logger=None):
-        super().__init__(image_path, levels, size_ratios, timesteps, crop_size, network_filters, logger)
+    def __init__(self, image_path, levels, size_ratios, timesteps, crop_size, network_filters, network_depth, logger=None):
+        super().__init__(image_path, levels, size_ratios, timesteps, crop_size, network_filters, network_depth, logger)
 
     def initialize_diffusion_models(self):
-        # Default backbone networks
-        models = []
+        # Coarsest layer backbone is a NextNet
+        models = [NextNet(filters_per_layer=self.network_filters[0], depth=self.network_depth[0])]
 
-        # TODO MAKE DEPTH CONFIGURABLE
-        models.append(NextNet(depth=9, filters_per_layer=self.network_filters[0]))
+        # The rest of the layer backbones are simpler ZSSRNet
         for i in range(1, self.levels):
-            models.append(ZSSRNet(in_channels=6, filters_per_layer=self.network_filters[i]))
+            models.append(ZSSRNet(in_channels=6, filters_per_layer=self.network_filters[i],
+                                  depth=self.network_depth[i]))
 
         self.diffusion_models.append(Diffusion(model=models[0], timesteps=self.timesteps[0], auto_sample=False))
         for i in range(1, self.levels):
@@ -43,12 +43,11 @@ class SRDiffusionPyramid(DiffusionPyramid):
 
         self.datasets.append(CropSet(image=self.images[0], crop_size=self.crop_size))
         for level in range(1, self.levels):
-            #self.datasets.append(SRCropSet(hr=self.images[level],
-            self.datasets.append(SRCropSet(hr=laplace[level],
+            self.datasets.append(SRCropSet(hr=self.images[level],
+            #self.datasets.append(SRCropSet(hr=laplace[level], # UNCOMMENT THIS WHEN USING LAPLACE (TODO REMOVE LINE)
                                            lr=self.images[level - 1],
                                            crop_size=self.crop_size))
 
-    # TODO CHANGE DOCS IN CASE OF REMAINING WITH LAPLACE CODE
     def sample(self, sample_size, batch_size, debug=False):
         """
         Sample a batch of images from the pyramid.
@@ -81,12 +80,13 @@ class SRDiffusionPyramid(DiffusionPyramid):
             resized_lr_sample = resize(lr_sample, out_shape=sample_size_per_level[level])
 
             # In any of the other levels, noise is sampled and is conditioned on the sample from the previous layer
-            laplace_sample = self.diffusion_models[level].sample(lr=resized_lr_sample, image_size=sample_size_per_level[level])
+            #laplace_sample = self.diffusion_models[level].sample(lr=resized_lr_sample, image_size=sample_size_per_level[level]) # UNCOMMENT THIS WHEN USING LAPLACE (TODO REMOVE LINE)
+            sample = self.diffusion_models[level].sample(lr=resized_lr_sample, image_size=sample_size_per_level[level])
 
-            sample = laplace_sample + resized_lr_sample
+            #sample = laplace_sample + resized_lr_sample # UNCOMMENT THIS WHEN USING LAPLACE (TODO REMOVE LINE)
 
             if debug:
-                save_diffusion_sample(laplace_sample, f"{self.logger.log_dir}/level_{level}_laplace.png")
+                # save_diffusion_sample(laplace_sample, f"{self.logger.log_dir}/level_{level}_laplace.png") # UNCOMMENT THIS WHEN USING LAPLACE (TODO REMOVE LINE)
                 save_diffusion_sample(sample, f"{self.logger.log_dir}/level_{level}_sample.png")
 
         return sample

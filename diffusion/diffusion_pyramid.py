@@ -18,7 +18,8 @@ class DiffusionPyramid(object):
     The coarsest level in the pyramid (level 0) handles the lowest resolution, and the last
     level in the pyramid handles the original image (highest) resolution.
     """
-    def __init__(self, image_path, levels, size_ratios, timesteps, crop_size, network_filters, logger=False):
+    def __init__(self, image_path, levels, size_ratios, timesteps, crop_size, network_filters, network_depth,
+                 logger=False):
         """
         Args:
             image_path (str):
@@ -41,10 +42,11 @@ class DiffusionPyramid(object):
         self.size_ratios = get_pyramid_parameter_as_list(size_ratios, levels - 1)
         self.timesteps = get_pyramid_parameter_as_list(timesteps, levels)
         self.network_filters = get_pyramid_parameter_as_list(network_filters, levels)
+        self.network_depth = get_pyramid_parameter_as_list(network_depth, levels)
         self.crop_size = (crop_size, crop_size)
 
         # Generate image pyramid
-        self.images = [imread(image_path)]
+        self.images = [imread(image_path)[0]]
         for ratio in self.size_ratios[::-1]:
             self.images.insert(0, resize(self.images[0], scale_factors=ratio))
 
@@ -64,9 +66,11 @@ class DiffusionPyramid(object):
         """
         # Use default identical backbone networks
         for level in range(self.levels):
-            self.diffusion_models.append(Diffusion(model=ZSSRNet(filters_per_layer=self.network_filters[level]),
+            self.diffusion_models.append(Diffusion(model=ZSSRNet(
+                                                            filters_per_layer=self.network_filters[level],
+                                                            depth=self.network_depth[level]),
                                                    timesteps=self.timesteps[0],
-                                                   noising_timesteps_ratio=self.timesteps[level] / self.timesteps[0],  # TODO WRITE THIS CODE BETTER
+                                                   noising_timesteps_ratio=self.timesteps[level] / self.timesteps[0],
                                                    auto_sample=False))
 
     def initialize_datasets(self):
@@ -132,7 +136,7 @@ class DiffusionPyramid(object):
         return sample
 
     @classmethod
-    def load_from_checkpoint(cls, checkpoint_dir_path, image_path, levels, size_ratios, timesteps):
+    def load_from_checkpoint(cls, checkpoint_dir_path, image_path, levels, size_ratios, timesteps, crop_size, network_filters):
         """
         Load a new diffusion pyramid from existing pre-trained checkpoints.
 
@@ -142,15 +146,17 @@ class DiffusionPyramid(object):
                 For example -
                     level=0-step=99.ckpt, level=1-step=999.ckpt, etc.
         """
-        checkpoint_files = os.listdir(checkpoint_dir_path)
+        checkpoint_files = sorted(os.listdir(checkpoint_dir_path))
         assert len(checkpoint_files) == levels, 'The checkpoint directory must include a checkpoint file for each level'
-        new_pyramid = cls(image_path=image_path, levels=levels, size_ratios=size_ratios, timesteps=timesteps)
+        new_pyramid = cls(image_path=image_path, levels=levels, size_ratios=size_ratios, timesteps=timesteps,
+                          crop_size=crop_size, network_filters=network_filters)
 
         # Override the inner diffusion models of the pyramid with the checkpoints
         checkpoint_models = []
         for level in range(levels):
-            assert checkpoint_files[level].startswith(f'level={level}'), 'Unexpected order of checkpoint files or ' \
-                                                                         'missing files'
+            assert checkpoint_files[level].startswith(f'level={level}'), f'Unexpected order of checkpoint files or ' \
+                                                                         f'missing files. Expected "level={level}...", ' \
+                                                                         f'found {checkpoint_files[level]}'
 
             # Dynamically find the type of the model implementation
             dm_impl_class = new_pyramid.diffusion_models[level].__class__

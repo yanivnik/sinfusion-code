@@ -14,13 +14,12 @@ class CropSet(Dataset):
         """
         self.crop_size = crop_size
 
-        transform_sequence = [
+        self.transform = transforms.Compose([
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(self.crop_size, pad_if_needed=False),
             transforms.Lambda(lambda img: (img[:3, ] * 2) - 1)
-        ]
+        ])
 
-        self.transform = transforms.Compose(transform_sequence)
         self.img = image
 
     def __len__(self):
