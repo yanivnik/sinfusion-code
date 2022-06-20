@@ -9,13 +9,14 @@ class Config:
 
     # Deployment configuration options
     log_progress = True     # Should loggers log training progress bar
-    available_gpus = '3'    # list of available gpus (in CUDA_VISIBLE_DEVICES format)
+    available_gpus = '0'    # list of available gpus (in CUDA_VISIBLE_DEVICES format)
 
     # Diffusion configuration options
-    diffusion_timesteps = 500
+    diffusion_timesteps = [500, 2000, 2000, 2000, 2000]
 
     # Backbone model and dataset configuration options
     network_filters = 64    # Amount of filters in backbone network conv layers
+    network_depth = [9, 8, 8, 8, 8]
     crop_size = 19
 
     # Optimization configuration options

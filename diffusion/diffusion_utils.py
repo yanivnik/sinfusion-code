@@ -6,9 +6,6 @@ import torch
 from PIL import Image
 
 
-# TODO DOCUMENT AND REFACTOR
-
-
 def cosine_noise_schedule(timesteps, s=0.008):
     """
     cosine schedule
@@ -23,6 +20,9 @@ def cosine_noise_schedule(timesteps, s=0.008):
 
 
 def extract(a, t, x_shape):
+    """
+    Get the values from a in location t, broadcasted to x_shape.
+    """
     b, *_ = t.shape
     out = a.gather(-1, t)
     y =  out.reshape(b, *((1,) * (len(x_shape) - 1)))
@@ -47,7 +47,6 @@ def save_diffusion_sample(sample, output_path=None, wandb_logger=None):
             for i in range(sample.shape[0]):
                 dirname, fpath = os.path.split(output_path)
                 current_sample_output_path = os.path.join(dirname, f'{i}_{fpath}')
-                #current_sample_output_path = os.path.splitext(output_path)[0] + str(i) + os.path.splitext(output_path)[1]
                 Image.fromarray(sample[i]).save(current_sample_output_path)
         else:
             Image.fromarray(sample).save(output_path)
@@ -57,6 +56,10 @@ def save_diffusion_sample(sample, output_path=None, wandb_logger=None):
 
 
 def get_pyramid_parameter_as_list(param, pyramid_levels):
+    """
+    Convert param to be a list of length pyramid_levels.
+    If param is already a list (or any sequence) then make sure it is in the correct length.
+    """
     if isinstance(param, Iterable):
         assert len(param) == pyramid_levels
         return param

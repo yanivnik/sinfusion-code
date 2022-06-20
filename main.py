@@ -39,7 +39,7 @@ def train_pyramid_diffusion():
     training_steps_per_level = [30_000] + [100_000] * (cfg.pyramid_levels - 1)
     sample_batch_size = 16
 
-    wandb_logger = pl.loggers.WandbLogger(project="single-image-diffusion")
+    wandb_logger = None #pl.loggers.WandbLogger(project="single-image-diffusion")
     tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/pyramid/", name=cfg.image_name)
 
     print('Training generation pyramid')
@@ -49,7 +49,8 @@ def train_pyramid_diffusion():
                                  timesteps=cfg.diffusion_timesteps,
                                  crop_size=cfg.crop_size,
                                  network_filters=cfg.network_filters,
-                                 logger=tb_logger) # TODO HANDLE WANDB
+                                 network_depth=cfg.network_depth,
+                                 logger=tb_logger)  # TODO HANDLE WANDB
     pyramid.train(training_steps_per_level, log_progress=cfg.log_progress)
 
     print('Sampling generated images from pyramid')
