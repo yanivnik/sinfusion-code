@@ -9,6 +9,7 @@ from datasets.cropset import CropSet
 from diffusion.diffusion import Diffusion
 from diffusion.diffusion_pyramid_sr import SRDiffusionPyramid
 from diffusion.diffusion_utils import save_diffusion_sample
+from metrics.sifid_score import get_sifid_scores
 from models.zssr import ZSSRNet
 
 
@@ -38,12 +39,13 @@ def train_single_diffusion():
 def train_pyramid_diffusion():
     training_steps_per_level = [30_000] + [100_000] * (cfg.pyramid_levels - 1)
     sample_batch_size = 16
+    image_path = f'./images/{cfg.image_name}'
 
-    wandb_logger = None #pl.loggers.WandbLogger(project="single-image-diffusion")
+    wandb_logger = pl.loggers.WandbLogger(project="single-image-diffusion")
     tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/pyramid/", name=cfg.image_name)
 
     print('Training generation pyramid')
-    pyramid = SRDiffusionPyramid(f'./images/{cfg.image_name}',
+    pyramid = SRDiffusionPyramid(image_path,
                                  levels=cfg.pyramid_levels,
                                  size_ratios=cfg.pyramid_coarsest_ratio ** (1.0 / (cfg.pyramid_levels - 1)),
                                  timesteps=cfg.diffusion_timesteps,
@@ -56,6 +58,7 @@ def train_pyramid_diffusion():
     print('Sampling generated images from pyramid')
     samples = pyramid.sample((186, 248), sample_batch_size, debug=True)
     save_diffusion_sample(samples, f"{tb_logger.log_dir}/sample_.png", wandb_logger)
+    wandb_logger.log({'SIFID': get_sifid_scores(imread(image_path), samples).mean()})
 
 
 def main():
