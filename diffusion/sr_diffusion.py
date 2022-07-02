@@ -87,14 +87,10 @@ from diffusion.diffusion_utils import cosine_noise_schedule, save_diffusion_samp
 from pytorch_lightning import LightningModule
 class TheirsSRDiffusion(LightningModule):
     def __init__(self, model, channels=3, timesteps=1000, noising_timesteps_ratio=1.0,
-                 initial_lr=2e-4,
-                 auto_sample=True, sample_every_n_steps=1000, sample_size=(32, 32)):
+                 initial_lr=2e-4):
         super().__init__()
 
         self.step_counter = 0  # Overall step counter used to sample every n global steps
-        self.auto_sample = auto_sample
-        self.sample_every_n_steps = sample_every_n_steps
-        self.sample_size = sample_size
 
         self.channels = channels
         self.model = model
@@ -178,7 +174,8 @@ class TheirsSRDiffusion(LightningModule):
         return model_mean + noise * (0.5 * model_log_variance).exp()
 
     @torch.no_grad()
-    def sample(self, lr, image_size, batch_size):
+    def sample(self, lr, image_size):
+        batch_size = lr.shape[0]
         image_size = image_size if isinstance(image_size, tuple) else (image_size, image_size)
         sample_shape = (batch_size, self.channels, image_size[0], image_size[1])
 

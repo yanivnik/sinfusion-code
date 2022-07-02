@@ -12,11 +12,11 @@ class Config:
     available_gpus = '0'    # list of available gpus (in CUDA_VISIBLE_DEVICES format)
 
     # Diffusion configuration options
-    diffusion_timesteps = [500, 2000, 2000, 2000, 2000]
+    diffusion_timesteps = 500 #[500, 2000, 2000, 2000, 2000]
 
     # Backbone model and dataset configuration options
     network_filters = 64    # Amount of filters in backbone network conv layers
-    network_depth = [9, 8, 8, 8, 8]
+    network_depth = 9#[9, 8, 8, 8, 8]
     crop_size = 19
 
     # Optimization configuration options
@@ -31,19 +31,13 @@ class Config:
         pass
 
 
-cfg = Config()
-def set_active_config(config):
-    global cfg
-    cfg = config
-
-
-def log_config():
+def log_config(cfg):
     for k in dir(cfg):
         if k[:1] != '_':
             print(f'{k}={getattr(cfg, k)}')
 
 
-def parse_cmdline_args_to_config():
+def parse_cmdline_args_to_config(cfg):
     parser = argparse.ArgumentParser(description='Command line configuration')
     parser.add_argument('--pyramid_levels', type=int, help='Amount of levels in the generation pyramid')
     parser.add_argument('--pyramid_coarsest_ratio', type=float, help='Size ratio between the coarsest image in the pyramid and the original image')
@@ -61,12 +55,20 @@ def parse_cmdline_args_to_config():
         if v is not None:
             setattr(cfg, k, v)
 
-    return args
+    return cfg
 
 
 # Pre-made configurations
 BALLOONS_PYRAMID_CONFIG = Config()
+BALLOONS_PYRAMID_CONFIG.image_name = 'balloons.png'
 BALLOONS_PYRAMID_CONFIG.pyramid_levels = 5
 BALLOONS_PYRAMID_CONFIG.diffusion_timesteps = 500
-BALLOONS_PYRAMID_CONFIG.crop_size = 20
+BALLOONS_PYRAMID_CONFIG.crop_size = 19
 BALLOONS_PYRAMID_CONFIG.pyramid_coarsest_ratio = 0.135
+
+MOUNTAINS3_PYRAMID_CONFIG = Config()
+MOUNTAINS3_PYRAMID_CONFIG.image_name = 'mountains3.png'
+MOUNTAINS3_PYRAMID_CONFIG.pyramid_levels = 5
+MOUNTAINS3_PYRAMID_CONFIG.diffusion_timesteps = 500
+MOUNTAINS3_PYRAMID_CONFIG.crop_size = 19
+MOUNTAINS3_PYRAMID_CONFIG.pyramid_coarsest_ratio = 0.141

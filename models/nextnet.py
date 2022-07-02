@@ -21,9 +21,9 @@ class NextNet(nn.Module):
         # First block doesn't have a normalization layer
         self.layers.append(ConvNextBlock(in_channels, dim, time_emb_dim=time_dim, norm=False))
 
-        for i in range(1, depth // 2 + 1):
+        for i in range(1, math.ceil(self.depth / 2)):
             self.layers.append(ConvNextBlock(dim, dim, time_emb_dim=time_dim, norm=True))
-        for i in range(depth // 2 + 1, depth):
+        for i in range(math.ceil(self.depth / 2), depth):
             self.layers.append(ConvNextBlock(2 * dim, dim, time_emb_dim=time_dim, norm=True))
 
         # After all blocks, do a 1x1 conv to get the required amount of output channels

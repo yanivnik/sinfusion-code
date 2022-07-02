@@ -12,7 +12,7 @@ import torch
 from scipy import linalg
 
 from common_utils.ben_image import imread
-from inception import InceptionV3 # TODO DELETE AND USE NORMAL torchvision.Inception3 IF POSSIBLE
+from metrics.inception import InceptionV3  # TODO DELETE AND USE NORMAL torchvision.Inception3 IF POSSIBLE
 
 
 def get_activations(image, model):
