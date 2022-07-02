@@ -16,8 +16,8 @@ class SRCropSet(Dataset):
     def __init__(self, hr, lr, crop_size):
         """
         Args:
-            hr (PIL.Image): The high resolution image to generate crops from.
-            lr (PIL.Image): The low resolution image to generate crops from.
+            hr (torch.tensor): The high resolution image to generate crops from.
+            lr (torch.tensor): The low resolution image to generate crops from.
             crop_size (tuple(int, int)): The spatial dimensions of the crops to be taken.
         """
         self.crop_size = crop_size

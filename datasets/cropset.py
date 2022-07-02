@@ -9,7 +9,7 @@ class CropSet(Dataset):
     def __init__(self, image, crop_size):
         """
         Args:
-            image (PIL.Image): The image to generate crops from.
+            image (torch.tensor): The image to generate crops from.
             crop_size (tuple(int, int)): The spatial dimensions of the crops to be taken.
         """
         self.crop_size = crop_size

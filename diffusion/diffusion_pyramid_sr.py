@@ -4,7 +4,7 @@ from datasets.sr_cropset import SRCropSet
 from diffusion.diffusion import Diffusion
 from diffusion.diffusion_pyramid import DiffusionPyramid
 from diffusion.diffusion_utils import save_diffusion_sample
-from diffusion.sr_diffusion import SRDiffusion
+from diffusion.sr_diffusion import SRDiffusion, TheirsSRDiffusion
 from models.nextnet import NextNet
 from models.zssr import ZSSRNet
 
@@ -27,12 +27,18 @@ class SRDiffusionPyramid(DiffusionPyramid):
 
         # The rest of the layer backbones are simpler ZSSRNet
         for i in range(1, self.levels):
-            models.append(ZSSRNet(in_channels=6, filters_per_layer=self.network_filters[i],
+            #models.append(ZSSRNet(in_channels=6, filters_per_layer=self.network_filters[i],
+            #                      depth=self.network_depth[i]))
+            models.append(NextNet(in_channels=6, filters_per_layer=self.network_filters[i],
                                   depth=self.network_depth[i]))
 
         self.diffusion_models.append(Diffusion(model=models[0], timesteps=self.timesteps[0], auto_sample=False))
         for i in range(1, self.levels):
-            self.diffusion_models.append(SRDiffusion(model=models[i], timesteps=self.timesteps[i]))
+            # self.diffusion_models.append(SRDiffusion(model=models[i], timesteps=self.timesteps[i]))
+
+            # This uses the hacky model which implements the continous sampling trick from WaveGrad.
+            # TODO: Delete the hacky model and implement the sampling trick normally
+            self.diffusion_models.append(TheirsSRDiffusion(model=models[i], timesteps=self.timesteps[i]))
 
     def initialize_datasets(self):
         laplace = [self.images[0]]

@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
 from common_utils.ben_image import imread
-from config import parse_cmdline_args_to_config, log_config, cfg
+from config import parse_cmdline_args_to_config, log_config, BALLOONS_PYRAMID_CONFIG, MOUNTAINS3_PYRAMID_CONFIG
 from datasets.cropset import CropSet
 from diffusion.diffusion import Diffusion
 from diffusion.diffusion_pyramid_sr import SRDiffusionPyramid
@@ -13,7 +13,7 @@ from metrics.sifid_score import get_sifid_scores
 from models.zssr import ZSSRNet
 
 
-def train_single_diffusion():
+def train_single_diffusion(cfg):
     # Training hyperparameters
     training_steps = 50_000
 
@@ -36,8 +36,8 @@ def train_single_diffusion():
     trainer.fit(diffusion, train_loader)
 
 
-def train_pyramid_diffusion():
-    training_steps_per_level = [30_000] + [100_000] * (cfg.pyramid_levels - 1)
+def train_pyramid_diffusion(cfg):
+    training_steps_per_level = [30_000] * (cfg.pyramid_levels)
     sample_batch_size = 16
     image_path = f'./images/{cfg.image_name}'
 
@@ -58,18 +58,19 @@ def train_pyramid_diffusion():
     print('Sampling generated images from pyramid')
     samples = pyramid.sample((186, 248), sample_batch_size, debug=True)
     save_diffusion_sample(samples, f"{tb_logger.log_dir}/sample_.png", wandb_logger)
-    wandb_logger.log({'SIFID': get_sifid_scores(imread(image_path), samples).mean()})
+    wandb_logger.log_metrics({'SIFID': get_sifid_scores(imread(image_path), samples).mean()})
 
 
 def main():
-    parse_cmdline_args_to_config()
+    cfg = MOUNTAINS3_PYRAMID_CONFIG
+    cfg = parse_cmdline_args_to_config(cfg)
 
     if 'CUDA_VISIBLE_DEVICES' not in os.environ:
         os.environ['CUDA_VISIBLE_DEVICES'] = cfg.available_gpus
 
-    log_config()
-    train_pyramid_diffusion()
-    #train_single_diffusion()
+    log_config(cfg)
+    train_pyramid_diffusion(cfg)
+    #train_single_diffusion(cfg)
 
 
 if __name__ == '__main__':
