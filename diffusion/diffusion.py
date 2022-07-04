@@ -8,7 +8,7 @@ from diffusion.diffusion_utils import extract, cosine_noise_schedule, save_diffu
 
 class Diffusion(LightningModule):
     def __init__(self, model, channels=3, timesteps=1000, noising_timesteps_ratio=1.0,
-                 initial_lr=2e-4,
+                 initial_lr=2e-4, recon_loss_factor=0.0, recon_image=None,
                  auto_sample=True, sample_every_n_steps=1000, sample_size=(32, 32)):
         """
         Args:
@@ -47,6 +47,13 @@ class Diffusion(LightningModule):
         self.channels = channels
         self.model = model
         self.initial_lr = initial_lr
+
+        self.recon_loss_factor = recon_loss_factor
+        if self.recon_loss_factor > 0:
+            assert recon_image is not None
+            self.i = 0
+            self.register_buffer('recon_image', recon_image)
+            self.register_buffer('recon_noise', torch.randn_like(recon_image))
 
         assert 0 < noising_timesteps_ratio <= 1.0
         betas = cosine_noise_schedule(timesteps)
@@ -121,12 +128,37 @@ class Diffusion(LightningModule):
         image_size = image_size if isinstance(image_size, tuple) else (image_size, image_size)
         sample_shape = (batch_size, self.channels, image_size[0], image_size[1])
 
-        timesteps = custom_timesteps if custom_timesteps is not None else self.num_timesteps
+        timesteps = custom_timesteps or self.num_timesteps
         img = custom_initial_img if custom_initial_img is not None else torch.randn(sample_shape, device=self.device)
         for t in reversed(range(0, timesteps)):
             t_tensor = torch.full((batch_size, ), t, dtype=torch.int64, device=self.device)
             img = self.p_sample(img, t_tensor)
         return img
+
+    def sample_ddim(self, image_size=(32, 32), batch_size=16, sampling_step_size=100, custom_initial_img=None):
+        image_size = image_size if isinstance(image_size, tuple) else (image_size, image_size)
+        sample_shape = (batch_size, self.channels, image_size[0], image_size[1])
+
+        seq = range(0, self.num_timesteps, sampling_step_size)
+        seq_next = [-1] + list(seq[:-1])
+
+        img = custom_initial_img if custom_initial_img is not None else torch.randn(sample_shape, device=self.device)
+        x_t = img
+
+        zipped_reversed_seq = list(zip(reversed(seq), reversed(seq_next)))[:-1]
+        for t, t_next in zipped_reversed_seq:
+            t_tensor = torch.full((batch_size,), t, dtype=torch.int64, device=self.device)
+            t_next_tensor = torch.full((batch_size,), t_next, dtype=torch.int64, device=self.device)
+
+            e_t = self.model(x_t, t_tensor)
+            predicted_x0 = (x_t - extract(self.sqrt_one_minus_alphas_hat, t_tensor, x_t.shape) * e_t) / extract(self.sqrt_alphas_hat, t_tensor, x_t.shape)
+            direction_to_x_t = extract(self.sqrt_one_minus_alphas_hat, t_next_tensor, x_t.shape) * e_t
+            x_t = extract(self.sqrt_alphas_hat, t_next_tensor, x_t.shape) * predicted_x0 + direction_to_x_t
+
+        t_tensor = torch.full((batch_size,), 0, dtype=torch.int64, device=self.device)
+        e_t = self.model(x_t, t_tensor)
+        x_0 = (x_t - extract(self.sqrt_one_minus_alphas_hat, t_tensor, x_t.shape) * e_t) / extract(self.sqrt_alphas_hat, t_tensor, x_t.shape)
+        return x_0
 
     @torch.no_grad()
     def sample_and_save_output(self, output_path, sample_size):
@@ -172,7 +204,14 @@ class Diffusion(LightningModule):
 
         # Attempt to reconstruct white noise that was used in forward process
         noise_recon = self.model(x_noisy, t)
-        return F.mse_loss(noise, noise_recon)
+
+        loss = F.mse_loss(noise, noise_recon)
+        self.i += 1
+        if self.recon_loss_factor > 0 and self.i % 5 == 0:
+            generated_image = self.sample_ddim(image_size=self.recon_image.shape[-2], batch_size=1, sampling_step_size=50, custom_initial_img=self.recon_noise)
+            loss = loss + F.mse_loss(generated_image, self.recon_image)
+
+        return loss
 
     def training_step(self, batch, batch_idx):
         self.step_counter += 1

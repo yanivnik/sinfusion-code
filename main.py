@@ -23,8 +23,8 @@ def train_single_diffusion(cfg):
 
     # Create model and trainer
     model = ZSSRNet(filters_per_layer=cfg.network_filters)
-    diffusion = Diffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, sample_size=(186, 248),
-                          sample_every_n_steps=1000, auto_sample=True)
+    diffusion = Diffusion(model, channels=3, timesteps=cfg.diffusion_timesteps,
+                          sample_size=(186, 248), sample_every_n_steps=1000, auto_sample=True)
     model_callbacks = [pl.callbacks.ModelCheckpoint(filename=f'single-level-' + '{step}'),
                        pl.callbacks.ModelSummary(max_depth=-1)]
     wandb_logger = pl.loggers.WandbLogger(project="single-image-diffusion")
@@ -33,11 +33,12 @@ def train_single_diffusion(cfg):
                          logger=tb_logger, callbacks=model_callbacks)
 
     # Train model (samples are generated during training)
-    trainer.fit(diffusion, train_loader)
+    #trainer.fit(diffusion, train_loader)
+    diffusion.sample_ddim(image_size=(32, 32), batch_size=4)
 
 
 def train_pyramid_diffusion(cfg):
-    training_steps_per_level = [30_000] * (cfg.pyramid_levels)
+    training_steps_per_level = [30_000] + [1] * (cfg.pyramid_levels-1)
     sample_batch_size = 16
     image_path = f'./images/{cfg.image_name}'
 
@@ -62,7 +63,7 @@ def train_pyramid_diffusion(cfg):
 
 
 def main():
-    cfg = MOUNTAINS3_PYRAMID_CONFIG
+    cfg = BALLOONS_PYRAMID_CONFIG
     cfg = parse_cmdline_args_to_config(cfg)
 
     if 'CUDA_VISIBLE_DEVICES' not in os.environ:
