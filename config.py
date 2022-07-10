@@ -12,11 +12,11 @@ class Config:
     available_gpus = '0'    # list of available gpus (in CUDA_VISIBLE_DEVICES format)
 
     # Diffusion configuration options
-    diffusion_timesteps = 500 #[500, 2000, 2000, 2000, 2000]
+    diffusion_timesteps = 500
 
     # Backbone model and dataset configuration options
     network_filters = 64    # Amount of filters in backbone network conv layers
-    network_depth = 9#[9, 8, 8, 8, 8]
+    network_depth = 9
     crop_size = 19
 
     # Optimization configuration options
@@ -66,9 +66,31 @@ BALLOONS_PYRAMID_CONFIG.diffusion_timesteps = 500
 BALLOONS_PYRAMID_CONFIG.crop_size = 19
 BALLOONS_PYRAMID_CONFIG.pyramid_coarsest_ratio = 0.135
 
+BALLOONS_SINGLE_CONFIG = Config()
+BALLOONS_SINGLE_CONFIG.image_name = 'balloons.png'
+BALLOONS_SINGLE_CONFIG.pyramid_levels = None
+BALLOONS_SINGLE_CONFIG.pyramid_coarsest_ratio = None
+BALLOONS_SINGLE_CONFIG.diffusion_timesteps = 500
+BALLOONS_SINGLE_CONFIG.crop_size = 120
+BALLOONS_SINGLE_CONFIG.network_depth = 9
+
 MOUNTAINS3_PYRAMID_CONFIG = Config()
 MOUNTAINS3_PYRAMID_CONFIG.image_name = 'mountains3.png'
 MOUNTAINS3_PYRAMID_CONFIG.pyramid_levels = 5
 MOUNTAINS3_PYRAMID_CONFIG.diffusion_timesteps = 500
 MOUNTAINS3_PYRAMID_CONFIG.crop_size = 19
 MOUNTAINS3_PYRAMID_CONFIG.pyramid_coarsest_ratio = 0.141
+
+LIGHTNING_PYRAMID_CONFIG = Config()
+LIGHTNING_PYRAMID_CONFIG.image_name = 'lightning1.png'
+LIGHTNING_PYRAMID_CONFIG.pyramid_levels = 5
+LIGHTNING_PYRAMID_CONFIG.diffusion_timesteps = 500
+LIGHTNING_PYRAMID_CONFIG.crop_size = 19
+LIGHTNING_PYRAMID_CONFIG.pyramid_coarsest_ratio = 0.141
+
+STARRYNIGHT_PYRAMID_CONFIG = Config()
+STARRYNIGHT_PYRAMID_CONFIG.image_name = 'starry_night.png'
+STARRYNIGHT_PYRAMID_CONFIG.pyramid_levels = 5
+STARRYNIGHT_PYRAMID_CONFIG.diffusion_timesteps = 500
+STARRYNIGHT_PYRAMID_CONFIG.crop_size = 19
+STARRYNIGHT_PYRAMID_CONFIG.pyramid_coarsest_ratio = 0.135
