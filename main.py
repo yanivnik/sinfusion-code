@@ -4,27 +4,28 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
 from common_utils.ben_image import imread
-from config import parse_cmdline_args_to_config, log_config, BALLOONS_PYRAMID_CONFIG, MOUNTAINS3_PYRAMID_CONFIG
+from config import *
 from datasets.cropset import CropSet
 from diffusion.diffusion import Diffusion
 from diffusion.diffusion_pyramid_sr import SRDiffusionPyramid
 from diffusion.diffusion_utils import save_diffusion_sample
 from metrics.sifid_score import get_sifid_scores
-from models.zssr import ZSSRNet
+from models.nextnet import NextNet
 
 
 def train_single_diffusion(cfg):
     # Training hyperparameters
-    training_steps = 50_000
+    training_steps = 30_000
 
     # Create datasets and data loaders
-    train_dataset = CropSet(image=imread(f'./images/{cfg.image_name}'), crop_size=(cfg.crop_size, cfg.crop_size))
+    train_dataset = CropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size))
     train_loader = DataLoader(train_dataset, batch_size=1, num_workers=4, shuffle=True)
 
     # Create model and trainer
-    model = ZSSRNet(filters_per_layer=cfg.network_filters)
+    model = NextNet(filters_per_layer=cfg.network_filters, depth=cfg.network_depth)
     diffusion = Diffusion(model, channels=3, timesteps=cfg.diffusion_timesteps,
                           sample_size=(186, 248), sample_every_n_steps=1000, auto_sample=True)
+
     model_callbacks = [pl.callbacks.ModelCheckpoint(filename=f'single-level-' + '{step}'),
                        pl.callbacks.ModelSummary(max_depth=-1)]
     wandb_logger = pl.loggers.WandbLogger(project="single-image-diffusion")
@@ -33,8 +34,7 @@ def train_single_diffusion(cfg):
                          logger=tb_logger, callbacks=model_callbacks)
 
     # Train model (samples are generated during training)
-    #trainer.fit(diffusion, train_loader)
-    diffusion.sample_ddim(image_size=(32, 32), batch_size=4)
+    trainer.fit(diffusion, train_loader)
 
 
 def train_pyramid_diffusion(cfg):
