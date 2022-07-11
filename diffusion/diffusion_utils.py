@@ -42,7 +42,7 @@ def save_diffusion_sample(sample, output_path=None, wandb_logger=None):
     sample = (sample * 255).type(torch.uint8).moveaxis(1, 3).cpu().numpy()
 
     if output_path:
-        if len(sample.shape) == 4:
+        if sample.shape[0] > 1:
             # Handle batch of samples
             for i in range(sample.shape[0]):
                 dirname, fpath = os.path.split(output_path)

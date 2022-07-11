@@ -7,7 +7,7 @@ from diffusion.diffusion_utils import extract, cosine_noise_schedule, save_diffu
 
 
 class Diffusion(LightningModule):
-    def __init__(self, model, channels=3, timesteps=1000, noising_timesteps_ratio=1.0,
+    def __init__(self, model, channels=3, timesteps=1000,
                  initial_lr=2e-4, recon_loss_factor=0.0, recon_image=None,
                  auto_sample=True, sample_every_n_steps=1000, sample_size=(32, 32)):
         """
@@ -18,14 +18,12 @@ class Diffusion(LightningModule):
                 The amount of input channels in each image.
             timesteps (int):
                 The amount of timesteps used to generate the noising schedule.
-            noising_timesteps_ratio (float):
-                The percent of the timesteps to use for training and sampling.
-                By default, this will be equal to 1.0 and the model will use the entire noise schedule
-                during training and sampling. A different value can be passed if, for example, we want the
-                model to be trained for partial denoising only. For example, if timesteps=1000 and the ratio=0.5,
-                the model will be trained only on the first 500 diffusion steps.
             initial_lr (float):
                 The initial learning rate for the diffusion training.
+            recon_loss_factor (float):
+
+            recon_image (torch.tensor):
+
             auto_sample (bool):
                 Should the model perform sampling during training.
                 If False, the following sampling parameters are ignored.
@@ -48,16 +46,15 @@ class Diffusion(LightningModule):
         self.model = model
         self.initial_lr = initial_lr
 
+        self.i = 0
         self.recon_loss_factor = recon_loss_factor
         if self.recon_loss_factor > 0:
             assert recon_image is not None
-            self.i = 0
             self.register_buffer('recon_image', recon_image)
             self.register_buffer('recon_noise', torch.randn_like(recon_image))
 
-        assert 0 < noising_timesteps_ratio <= 1.0
         betas = cosine_noise_schedule(timesteps)
-        self.num_timesteps = int(betas.shape[0] * noising_timesteps_ratio)
+        self.num_timesteps = int(betas.shape[0])
 
         alphas = 1. - betas
         alphas_hat = np.cumprod(alphas, axis=0)
@@ -135,30 +132,69 @@ class Diffusion(LightningModule):
             img = self.p_sample(img, t_tensor)
         return img
 
-    def sample_ddim(self, image_size=(32, 32), batch_size=16, sampling_step_size=100, custom_initial_img=None):
-        image_size = image_size if isinstance(image_size, tuple) else (image_size, image_size)
-        sample_shape = (batch_size, self.channels, image_size[0], image_size[1])
+    def sample_ddim(self, x_T=None, image_size=(32, 32), batch_size=16, sampling_step_size=100):
+        """
+        Sample from the model, using the DDIM sampling process.
+        The DDIM implicit sampling process is determinstic, and will always generate the same output
+        if given the same input.
 
+        Args:
+            x_T (torch.tensor): The initial noise to start the sampling process from. Can be None.
+            image_size (int or tuple(int)): Used as the sample spatial dimensions in case x_T is None.
+            batch_size (int): Used as the sample batch size in case x_T is None.
+            sampling_step_size (int): The step size between each t in the sampling process. The higher this value is,
+                                      the faster the sampling process (as well as lower image quality).
+        """
         seq = range(0, self.num_timesteps, sampling_step_size)
         seq_next = [-1] + list(seq[:-1])
 
-        img = custom_initial_img if custom_initial_img is not None else torch.randn(sample_shape, device=self.device)
-        x_t = img
+        if x_T is None:
+            image_size = image_size if isinstance(image_size, tuple) else (image_size, image_size)
+            sample_shape = (batch_size, self.channels, image_size[0], image_size[1])
+            x_t = torch.randn(sample_shape, device=self.device)
+        else:
+            batch_size = x_T.shape[0] if len(x_T.shape) == 4 else 1
+            image_size = x_T.shape[-2:]
+            x_t = x_T
 
-        zipped_reversed_seq = list(zip(reversed(seq), reversed(seq_next)))[:-1]
+        zipped_reversed_seq = list(zip(reversed(seq), reversed(seq_next)))
         for t, t_next in zipped_reversed_seq:
             t_tensor = torch.full((batch_size,), t, dtype=torch.int64, device=self.device)
             t_next_tensor = torch.full((batch_size,), t_next, dtype=torch.int64, device=self.device)
 
             e_t = self.model(x_t, t_tensor)
-            predicted_x0 = (x_t - extract(self.sqrt_one_minus_alphas_hat, t_tensor, x_t.shape) * e_t) / extract(self.sqrt_alphas_hat, t_tensor, x_t.shape)
-            direction_to_x_t = extract(self.sqrt_one_minus_alphas_hat, t_next_tensor, x_t.shape) * e_t
-            x_t = extract(self.sqrt_alphas_hat, t_next_tensor, x_t.shape) * predicted_x0 + direction_to_x_t
+            predicted_x0 = (x_t - extract(self.sqrt_one_minus_alphas_hat, t_tensor, x_t.shape) * e_t) / \
+                           extract(self.sqrt_alphas_hat, t_tensor, x_t.shape)
+            if t > 0:
+                direction_to_x_t = extract(self.sqrt_one_minus_alphas_hat, t_next_tensor, x_t.shape) * e_t
+                x_t = extract(self.sqrt_alphas_hat, t_next_tensor, x_t.shape) * predicted_x0 + direction_to_x_t
+            else:
+                x_t = predicted_x0
 
-        t_tensor = torch.full((batch_size,), 0, dtype=torch.int64, device=self.device)
-        e_t = self.model(x_t, t_tensor)
-        x_0 = (x_t - extract(self.sqrt_one_minus_alphas_hat, t_tensor, x_t.shape) * e_t) / extract(self.sqrt_alphas_hat, t_tensor, x_t.shape)
-        return x_0
+        return x_t
+
+    @torch.no_grad()
+    def sample_interpolate(self, x_T1, x_T2, interp_seq_len=100):
+        """
+        Given two instances of noisy images, returns the sequence of interpolations between them.
+        The interpolations are calculated using spherical linear interpolation.
+        """
+        assert x_T1.shape == x_T2.shape
+
+        x_T_samples = []
+        theta = torch.acos(torch.sum(x_T1 * x_T2) / (torch.norm(x_T1) * torch.norm(x_T2)))
+        for alpha in torch.arange(0.0, 1.01, 1.0 / interp_seq_len):
+            x_T_alpha = (torch.sin((1 - alpha) * theta) / torch.sin(theta)) * x_T1 + \
+                        (torch.sin(alpha * theta) / torch.sin(theta)) * x_T2
+            x_T_samples.append(x_T_alpha.unsqueeze(0))
+        x_T_samples = torch.cat(x_T_samples, dim=0).moveaxis(0, 1)
+
+        x_0_samples_batch = []
+        for index in range(len(x_T1)):
+            x_0_samples = self.sample_ddim(x_T=x_T_samples[index], sampling_step_size=10)
+            x_0_samples_batch.append(x_0_samples.unsqueeze(0))
+
+        return torch.cat(x_0_samples_batch, dim=0)
 
     @torch.no_grad()
     def sample_and_save_output(self, output_path, sample_size):
@@ -191,6 +227,7 @@ class Diffusion(LightningModule):
         )
 
     def forward(self, x, *args, **kwargs):
+        self.i += 1
         batch_size = x.shape[0]
 
         # Sample t uniformly
@@ -206,9 +243,11 @@ class Diffusion(LightningModule):
         noise_recon = self.model(x_noisy, t)
 
         loss = F.mse_loss(noise, noise_recon)
-        self.i += 1
+
         if self.recon_loss_factor > 0 and self.i % 5 == 0:
-            generated_image = self.sample_ddim(image_size=self.recon_image.shape[-2], batch_size=1, sampling_step_size=50, custom_initial_img=self.recon_noise)
+            # Add a reconstruction loss between the original image and the DDIM
+            # sampling result of the constant reconstruction noise.
+            generated_image = self.sample_ddim(x_T=self.recon_noise, sampling_step_size=self.num_timesteps // 10)
             loss = loss + F.mse_loss(generated_image, self.recon_image)
 
         return loss
@@ -226,12 +265,4 @@ class Diffusion(LightningModule):
     def configure_optimizers(self):
         optim = torch.optim.Adam(self.parameters(), lr=self.initial_lr)
         # TODO SUPPORT SCHEDULER
-        #scheduler = torch.optim.lr_scheduler.MultiStepLR(
-        #    optim,
-        #    milestones=[5, 10, 15],
-        #    gamma=0.5)
-
-        return {
-            "optimizer": optim,
-        #    "lr_scheduler": scheduler
-        }
+        return optim

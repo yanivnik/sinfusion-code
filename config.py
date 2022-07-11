@@ -66,13 +66,12 @@ BALLOONS_PYRAMID_CONFIG.diffusion_timesteps = 500
 BALLOONS_PYRAMID_CONFIG.crop_size = 19
 BALLOONS_PYRAMID_CONFIG.pyramid_coarsest_ratio = 0.135
 
-BALLOONS_SINGLE_CONFIG = Config()
-BALLOONS_SINGLE_CONFIG.image_name = 'balloons.png'
-BALLOONS_SINGLE_CONFIG.pyramid_levels = None
-BALLOONS_SINGLE_CONFIG.pyramid_coarsest_ratio = None
-BALLOONS_SINGLE_CONFIG.diffusion_timesteps = 500
-BALLOONS_SINGLE_CONFIG.crop_size = 120
-BALLOONS_SINGLE_CONFIG.network_depth = 9
+DOG_PYRAMID_CONFIG = Config()
+DOG_PYRAMID_CONFIG.image_name = 'dog.jpg'
+DOG_PYRAMID_CONFIG.pyramid_levels = 5
+DOG_PYRAMID_CONFIG.diffusion_timesteps = 500
+DOG_PYRAMID_CONFIG.crop_size = 20
+DOG_PYRAMID_CONFIG.pyramid_coarsest_ratio = 0.135
 
 MOUNTAINS3_PYRAMID_CONFIG = Config()
 MOUNTAINS3_PYRAMID_CONFIG.image_name = 'mountains3.png'

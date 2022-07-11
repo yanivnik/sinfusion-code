@@ -70,7 +70,6 @@ class DiffusionPyramid(object):
                                                             filters_per_layer=self.network_filters[level],
                                                             depth=self.network_depth[level]),
                                                    timesteps=self.timesteps[0],
-                                                   noising_timesteps_ratio=self.timesteps[level] / self.timesteps[0],
                                                    auto_sample=False))
 
     def initialize_datasets(self):

@@ -38,7 +38,7 @@ def train_single_diffusion(cfg):
 
 
 def train_pyramid_diffusion(cfg):
-    training_steps_per_level = [30_000] + [1] * (cfg.pyramid_levels-1)
+    training_steps_per_level = [30_000] * cfg.pyramid_levels
     sample_batch_size = 16
     image_path = f'./images/{cfg.image_name}'
 
@@ -63,7 +63,7 @@ def train_pyramid_diffusion(cfg):
 
 
 def main():
-    cfg = BALLOONS_PYRAMID_CONFIG
+    cfg = DOG_PYRAMID_CONFIG# BALLOONS_PYRAMID_CONFIG
     cfg = parse_cmdline_args_to_config(cfg)
 
     if 'CUDA_VISIBLE_DEVICES' not in os.environ:
