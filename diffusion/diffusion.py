@@ -248,7 +248,7 @@ class Diffusion(LightningModule):
             # Add a reconstruction loss between the original image and the DDIM
             # sampling result of the constant reconstruction noise.
             generated_image = self.sample_ddim(x_T=self.recon_noise, sampling_step_size=self.num_timesteps // 10)
-            loss = loss + F.mse_loss(generated_image, self.recon_image)
+            loss = loss + F.mse_loss(generated_image, self.recon_image.unsqueeze(0))
 
         return loss
 

@@ -266,10 +266,9 @@ class TheirsSRDiffusion(LightningModule):
             # Add a reconstruction loss between the original image and the DDIM
             # sampling result of the constant reconstruction noise.
             generated_image = self.sample_ddim(lr=self.recon_image_lr,
-                                               image_size=self.recon_image.shape[-2:],
-                                               sampling_step_size=self.num_timesteps // 10,
-                                               custom_initial_img=self.recon_noise)
-            loss = loss + F.mse_loss(generated_image, self.recon_image)
+                                               x_T=self.recon_noise,
+                                               sampling_step_size=self.num_timesteps // 10)
+            loss = loss + F.mse_loss(generated_image, self.recon_image.unsqueeze(0))
 
         return loss
 
