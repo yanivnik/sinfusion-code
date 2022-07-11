@@ -25,7 +25,6 @@ class SRDiffusionPyramid(DiffusionPyramid):
         # Coarsest layer backbone is a NextNet
         models = [NextNet(filters_per_layer=self.network_filters[0], depth=self.network_depth[0])]
 
-        # The rest of the layer backbones are simpler ZSSRNet
         for i in range(1, self.levels):
             #models.append(ZSSRNet(in_channels=6, filters_per_layer=self.network_filters[i],
             #                      depth=self.network_depth[i]))
@@ -33,13 +32,17 @@ class SRDiffusionPyramid(DiffusionPyramid):
                                   depth=self.network_depth[i]))
 
         self.diffusion_models.append(Diffusion(model=models[0], timesteps=self.timesteps[0], auto_sample=False,
-                                               recon_loss_factor=0.8, recon_image=self.images[0]))
+                                               recon_loss_factor=1, recon_image=self.images[0])) # Currently disabled recon loss for faster training
         for i in range(1, self.levels):
             # self.diffusion_models.append(SRDiffusion(model=models[i], timesteps=self.timesteps[i]))
 
             # This uses the hacky model which implements the continous sampling trick from WaveGrad.
             # TODO: Delete the hacky model and implement the sampling trick normally
-            self.diffusion_models.append(TheirsSRDiffusion(model=models[i], timesteps=self.timesteps[i]))
+            self.diffusion_models.append(TheirsSRDiffusion(model=models[i], timesteps=self.timesteps[i],
+                                                           recon_loss_factor=0,  # Currently disabled recon loss for faster training
+                                                           recon_image=self.images[i].unsqueeze(0),
+                                                           recon_image_lr=resize(self.images[i - 1],
+                                                                                 out_shape=self.images[i].shape).unsqueeze(0)))
 
     def initialize_datasets(self):
         laplace = [self.images[0]]

@@ -1,7 +1,8 @@
-from diffusion.diffusion import Diffusion
-import torch
 import numpy as np
+import torch
 import torch.nn.functional as F
+
+from diffusion.diffusion import Diffusion
 
 
 # TODO IF THIS SR WORKS WELL THAN REFACTOR IT INTO THE DIFFUSION CLASS
@@ -49,6 +50,7 @@ class SRDiffusion(Diffusion):
             hr_img = self.p_sample_conditioned(hr_img, lr, t_tensor)
         return hr_img
 
+
     @torch.no_grad()
     def p_sample_conditioned(self, x_hr, x_lr, t, clip_denoised=True):
         b, *_ = x_hr.shape
@@ -83,11 +85,10 @@ def default(val, d):
     if exists(val):
         return val
     return d() if isfunction(d) else d
-from diffusion.diffusion_utils import cosine_noise_schedule, save_diffusion_sample
+from diffusion.diffusion_utils import cosine_noise_schedule
 from pytorch_lightning import LightningModule
 class TheirsSRDiffusion(LightningModule):
-    def __init__(self, model, channels=3, timesteps=1000, noising_timesteps_ratio=1.0,
-                 initial_lr=2e-4):
+    def __init__(self, model, channels=3, timesteps=1000, recon_loss_factor=0.0, recon_image=None, recon_image_lr=None, initial_lr=2e-4):
         super().__init__()
 
         self.step_counter = 0  # Overall step counter used to sample every n global steps
@@ -95,6 +96,14 @@ class TheirsSRDiffusion(LightningModule):
         self.channels = channels
         self.model = model
         self.initial_lr = initial_lr
+
+        self.recon_loss_factor = recon_loss_factor
+        self.i = 0
+        if self.recon_loss_factor > 0:
+            assert recon_image is not None
+            self.register_buffer('recon_image', recon_image)
+            self.register_buffer('recon_image_lr', recon_image_lr)
+            self.register_buffer('recon_noise', torch.randn_like(recon_image))
 
         to_torch = partial(torch.tensor, dtype=torch.float32)
 
@@ -184,6 +193,42 @@ class TheirsSRDiffusion(LightningModule):
             hr_img = self.p_sample(hr_img, i, condition_x=lr)
         return hr_img
 
+    def sample_ddim(self, lr, x_T=None, sampling_step_size=100):
+        """
+        Sample from the model, using the DDIM sampling process.
+        The DDIM implicit sampling process is determinstic, and will always generate the same output
+        if given the same input.
+
+        Args:
+            lr (torch.tensor): The low resolution image used to condition the sampling process.
+            x_T (torch.tensor): The initial noise to start the sampling process from. Can be None.
+            sampling_step_size (int): The step size between each t in the sampling process. The higher this value is,
+                                      the faster the sampling process (as well as lower image quality).
+        """
+        batch_size = lr.shape[0]
+        seq = range(0, self.num_timesteps, sampling_step_size)
+        seq_next = [-1] + list(seq[:-1])
+
+        if x_T is None:
+            x_t = torch.randn(lr.shape, device=self.device)
+        else:
+            x_t = x_T
+
+        zipped_reversed_seq = list(zip(reversed(seq), reversed(seq_next)))[:-1]
+        for t, t_next in zipped_reversed_seq:
+            noise_level = torch.FloatTensor(
+                [self.sqrt_alphas_cumprod_prev[t + 1]]).repeat(batch_size, 1).view((batch_size,)).to(x_t.device)
+
+            e_t = self.model(torch.cat([lr, x_t], dim=1), noise_level)
+            predicted_x0 = (x_t - self.sqrt_one_minus_alphas_cumprod[t] * e_t) / self.sqrt_alphas_cumprod[t]
+            direction_to_x_t = self.sqrt_one_minus_alphas_cumprod[t_next] * e_t
+            x_t = self.sqrt_alphas_cumprod[t_next] * predicted_x0 + direction_to_x_t
+
+        t_tensor = torch.full((batch_size,), 0, dtype=torch.int64, device=self.device)
+        e_t = self.model(torch.cat([lr, x_t], dim=1), t_tensor)
+        x_0 = (x_t - self.sqrt_one_minus_alphas_cumprod[0] * e_t) / self.sqrt_alphas_cumprod[0]
+        return x_0
+
     def q_sample(self, x_start, continuous_sqrt_alpha_cumprod, noise=None):
         noise = default(noise, lambda: torch.randn_like(x_start))
 
@@ -194,6 +239,8 @@ class TheirsSRDiffusion(LightningModule):
         )
 
     def forward(self, x_in, noise=None):
+        self.i += 1
+
         x_start = x_in['HR']
         [b, c, h, w] = x_start.shape
         t = np.random.randint(1, self.num_timesteps + 1)
@@ -214,6 +261,16 @@ class TheirsSRDiffusion(LightningModule):
             torch.cat([x_in['LR'], x_noisy], dim=1), continuous_sqrt_alpha_cumprod.view(-1))
 
         loss = F.mse_loss(noise, x_recon)
+
+        if self.recon_loss_factor > 0 and self.i % 5 == 0:
+            # Add a reconstruction loss between the original image and the DDIM
+            # sampling result of the constant reconstruction noise.
+            generated_image = self.sample_ddim(lr=self.recon_image_lr,
+                                               image_size=self.recon_image.shape[-2:],
+                                               sampling_step_size=self.num_timesteps // 10,
+                                               custom_initial_img=self.recon_noise)
+            loss = loss + F.mse_loss(generated_image, self.recon_image)
+
         return loss
 
     def training_step(self, batch, batch_idx):
