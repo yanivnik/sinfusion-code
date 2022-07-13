@@ -50,7 +50,7 @@ class Diffusion(LightningModule):
         self.recon_loss_factor = recon_loss_factor
         if self.recon_loss_factor > 0:
             assert recon_image is not None
-            self.register_buffer('recon_image', recon_image)
+            self.register_buffer('recon_image', (recon_image * 2) - 1)
             self.register_buffer('recon_noise', torch.randn_like(recon_image))
 
         betas = cosine_noise_schedule(timesteps)

@@ -32,7 +32,7 @@ class SRDiffusionPyramid(DiffusionPyramid):
                                   depth=self.network_depth[i]))
 
         self.diffusion_models.append(Diffusion(model=models[0], timesteps=self.timesteps[0], auto_sample=False,
-                                               recon_loss_factor=1, recon_image=self.images[0])) # Currently disabled recon loss for faster training
+                                               recon_loss_factor=0, recon_image=self.images[0])) # Currently disabled recon loss for faster training
         for i in range(1, self.levels):
             # self.diffusion_models.append(SRDiffusion(model=models[i], timesteps=self.timesteps[i]))
 
@@ -90,10 +90,9 @@ class SRDiffusionPyramid(DiffusionPyramid):
             resized_lr_sample = resize(lr_sample, out_shape=sample_size_per_level[level])
 
             # In any of the other levels, noise is sampled and is conditioned on the sample from the previous layer
-            #laplace_sample = self.diffusion_models[level].sample(lr=resized_lr_sample, image_size=sample_size_per_level[level]) # UNCOMMENT THIS WHEN USING LAPLACE (TODO REMOVE LINE)
-            sample = self.diffusion_models[level].sample(lr=resized_lr_sample, image_size=sample_size_per_level[level])
-
-            #sample = laplace_sample + resized_lr_sample # UNCOMMENT THIS WHEN USING LAPLACE (TODO REMOVE LINE)
+            # laplace_sample = self.diffusion_models[level].sample(lr=resized_lr_sample) # UNCOMMENT THIS WHEN USING LAPLACE (TODO REMOVE LINE)
+            # sample = laplace_sample + resized_lr_sample  # UNCOMMENT THIS WHEN USING LAPLACE (TODO REMOVE LINE)
+            sample = self.diffusion_models[level].sample(lr=resized_lr_sample)
 
             if debug:
                 # save_diffusion_sample(laplace_sample, f"{self.logger.log_dir}/level_{level}_laplace.png") # UNCOMMENT THIS WHEN USING LAPLACE (TODO REMOVE LINE)

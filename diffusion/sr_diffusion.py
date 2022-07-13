@@ -101,8 +101,8 @@ class TheirsSRDiffusion(LightningModule):
         self.i = 0
         if self.recon_loss_factor > 0:
             assert recon_image is not None
-            self.register_buffer('recon_image', recon_image)
-            self.register_buffer('recon_image_lr', recon_image_lr)
+            self.register_buffer('recon_image', (recon_image * 2) - 1)
+            self.register_buffer('recon_image_lr', (recon_image_lr * 2) - 1)
             self.register_buffer('recon_noise', torch.randn_like(recon_image))
 
         to_torch = partial(torch.tensor, dtype=torch.float32)
@@ -183,12 +183,8 @@ class TheirsSRDiffusion(LightningModule):
         return model_mean + noise * (0.5 * model_log_variance).exp()
 
     @torch.no_grad()
-    def sample(self, lr, image_size):
-        batch_size = lr.shape[0]
-        image_size = image_size if isinstance(image_size, tuple) else (image_size, image_size)
-        sample_shape = (batch_size, self.channels, image_size[0], image_size[1])
-
-        hr_img = torch.randn(sample_shape, device=self.device)
+    def sample(self, lr):
+        hr_img = torch.randn_like(lr) # LR should be a low resolution image after upsampling
         for i in reversed(range(0, self.num_timesteps)):
             hr_img = self.p_sample(hr_img, i, condition_x=lr)
         return hr_img

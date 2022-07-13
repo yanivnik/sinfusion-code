@@ -63,7 +63,7 @@ def train_pyramid_diffusion(cfg):
 
 
 def main():
-    cfg = DOG_PYRAMID_CONFIG# BALLOONS_PYRAMID_CONFIG
+    cfg = BALLOONS_PYRAMID_CONFIG
     cfg = parse_cmdline_args_to_config(cfg)
 
     if 'CUDA_VISIBLE_DEVICES' not in os.environ:
