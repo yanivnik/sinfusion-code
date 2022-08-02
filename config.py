@@ -9,7 +9,7 @@ class Config:
 
     # Deployment configuration options
     log_progress = True     # Should loggers log training progress bar
-    available_gpus = '0'    # list of available gpus (in CUDA_VISIBLE_DEVICES format)
+    available_gpus = '1'    # list of available gpus (in CUDA_VISIBLE_DEVICES format)
 
     # Diffusion configuration options
     diffusion_timesteps = 500
@@ -39,6 +39,7 @@ def log_config(cfg):
 
 def parse_cmdline_args_to_config(cfg):
     parser = argparse.ArgumentParser(description='Command line configuration')
+    parser.add_argument('--image_name', type=str, help='The image to train the model on')
     parser.add_argument('--pyramid_levels', type=int, help='Amount of levels in the generation pyramid')
     parser.add_argument('--pyramid_coarsest_ratio', type=float, help='Size ratio between the coarsest image in the pyramid and the original image')
     parser.add_argument('--diffusion_timesteps', type=int, help='Amount of diffusion timesteps to perform per level')
@@ -65,6 +66,24 @@ BALLOONS_PYRAMID_CONFIG.pyramid_levels = 5
 BALLOONS_PYRAMID_CONFIG.diffusion_timesteps = 500
 BALLOONS_PYRAMID_CONFIG.crop_size = 19
 BALLOONS_PYRAMID_CONFIG.pyramid_coarsest_ratio = 0.135
+
+BALLOONS_CCG_CONFIG = Config()
+BALLOONS_CCG_CONFIG.image_name = 'balloons.png'
+BALLOONS_CCG_CONFIG.pyramid_levels = None
+BALLOONS_CCG_CONFIG.pyramid_coarsest_ratio = None
+BALLOONS_CCG_CONFIG.diffusion_timesteps = 500
+BALLOONS_CCG_CONFIG.crop_size = 128
+BALLOONS_CCG_CONFIG.network_depth = 9
+BALLOONS_CCG_CONFIG.network_filters = [32, 64, 64, 128, 256, 128, 64, 64, 32] # TODO YANIV: LOOK INTO CHANGING NUMBER OF FILTERS PER CONVNEXT BLOCK
+
+STARRY_NIGHT_CCG_CONFIG = Config()
+STARRY_NIGHT_CCG_CONFIG.image_name = 'starry_night.png'
+STARRY_NIGHT_CCG_CONFIG.pyramid_levels = None
+STARRY_NIGHT_CCG_CONFIG.pyramid_coarsest_ratio = None
+STARRY_NIGHT_CCG_CONFIG.diffusion_timesteps = 500
+STARRY_NIGHT_CCG_CONFIG.crop_size = 128
+STARRY_NIGHT_CCG_CONFIG.network_depth = 9
+STARRY_NIGHT_CCG_CONFIG.network_filters = [32, 64, 64, 128, 256, 128, 64, 64, 32] # TODO YANIV: LOOK INTO CHANGING NUMBER OF FILTERS PER CONVNEXT BLOCK
 
 DOG_PYRAMID_CONFIG = Config()
 DOG_PYRAMID_CONFIG.image_name = 'dog.jpg'

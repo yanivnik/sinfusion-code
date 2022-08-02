@@ -14,7 +14,8 @@ class RandomScaleResize(object):
 
     def __call__(self, x):
         if random.random() < self.rescale_threshold:
-            scale = self.min_scale + (self.max_scale - self.min_scale) * random.random()
-            return resize(x, scale_factors=scale)
+            scale_h = self.min_scale + (self.max_scale - self.min_scale) * random.random()
+            scale_w = self.min_scale + (self.max_scale - self.min_scale) * random.random()
+            return resize(x, scale_factors=(scale_h, scale_w))
         else:
             return x

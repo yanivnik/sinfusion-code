@@ -1,6 +1,7 @@
 lightning_logs
 wandb
 data
+presentations
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
