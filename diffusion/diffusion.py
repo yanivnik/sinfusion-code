@@ -244,7 +244,7 @@ class Diffusion(LightningModule):
 
         loss = F.mse_loss(noise, noise_recon)
 
-        if self.recon_loss_factor > 0 and self.i % 5 == 0:
+        if self.recon_loss_factor > 0 and self.i % 40 == 0:
             # Add a reconstruction loss between the original image and the DDIM
             # sampling result of the constant reconstruction noise.
             generated_image = self.sample_ddim(x_T=self.recon_noise, sampling_step_size=self.num_timesteps // 10)
@@ -253,13 +253,13 @@ class Diffusion(LightningModule):
         return loss
 
     def training_step(self, batch, batch_idx):
-        self.step_counter += 1
         if self.auto_sample and self.step_counter % self.sample_every_n_steps == 0:
             self.sample_and_save_output(f"{self.logger.log_dir}/sample_{self.step_counter}.png",
                                         sample_size=self.sample_size)
 
         loss = self.forward(batch)
         self.log('train/loss', loss)
+        self.step_counter += 1
         return loss
 
     def configure_optimizers(self):

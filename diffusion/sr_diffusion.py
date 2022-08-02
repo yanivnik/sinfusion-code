@@ -85,13 +85,15 @@ def default(val, d):
     if exists(val):
         return val
     return d() if isfunction(d) else d
-from diffusion.diffusion_utils import cosine_noise_schedule
+from diffusion.diffusion_utils import cosine_noise_schedule, save_diffusion_sample
 from pytorch_lightning import LightningModule
 class TheirsSRDiffusion(LightningModule):
-    def __init__(self, model, channels=3, timesteps=1000, recon_loss_factor=0.0, recon_image=None, recon_image_lr=None, initial_lr=2e-4):
+    def __init__(self, model, channels=3, timesteps=1000, recon_loss_factor=0.0, recon_image=None, recon_image_lr=None, initial_lr=2e-4, auto_sample=True):
         super().__init__()
 
         self.step_counter = 0  # Overall step counter used to sample every n global steps
+        self.sample_every_n_steps = 1000
+        self.auto_sample = auto_sample
 
         self.channels = channels
         self.model = model
@@ -225,6 +227,45 @@ class TheirsSRDiffusion(LightningModule):
         x_0 = (x_t - self.sqrt_one_minus_alphas_cumprod[0] * e_t) / self.sqrt_alphas_cumprod[0]
         return x_0
 
+    # TODO MOVE THIS ELSEWHERE
+    @torch.no_grad()
+    def sample_ccg(self, sample_size, batch_size, window_size, stride, padding_size, method='normal'):
+        """
+        Generate a sample using the conditional-crop-generation method.
+
+        Args:
+            sample_size (tuple(int)): The spatial dimensions of the sample during auto sampling.
+            batch_size (int): The batch size to sample.
+            window_size (tuple(int)):
+            stride (tuple(int)):
+            padding_size (tuple(int)): The spatial dimensions of the zero padding to add.
+        """
+
+        # Initialize image with frame
+        import torchvision
+        sample_shape = (batch_size, self.channels, sample_size[0], sample_size[1])
+        img = torch.randn(sample_shape).to(device=self.device)
+        img = torchvision.transforms.Pad(padding_size)(img)
+
+        # Move sliding window across image to conditionally generate image
+        # TODO THINK ABOUT MAKING THE PROGRESS DIAGONAL HERE. It might improve the algorithm efficiency.
+        for h in range(0, img.shape[-2], stride[0]):
+            for w in range(0, img.shape[-1], stride[1]):
+                if method == 'normal':
+                    img[:, :, h: h + window_size[0], w: w + window_size[1]] = \
+                        self.sample(lr=img[:, :, h: h + window_size[0], w: w + window_size[1]])
+                elif method == 'ddim':
+                    img[:, :, h: h + window_size[0], w: w + window_size[1]] = \
+                        self.sample_ddim(lr=img[:, :, h: h + window_size[0], w: w + window_size[1]], sampling_step_size=50)
+                else:
+                    raise Exception('Unsupported sampling method')
+
+                # TODO REMOVE
+                torchvision.utils.save_image((img + 1) / 2, f'/home/yanivni/data/tmp/ccg/ccg_partial_{h*sample_size[0]+w}.png')
+
+        return img[:, :, padding_size[0]:-padding_size[0], padding_size[1]:-padding_size[1]]
+
+
     def q_sample(self, x_start, continuous_sqrt_alpha_cumprod, noise=None):
         noise = default(noise, lambda: torch.randn_like(x_start))
 
@@ -269,9 +310,27 @@ class TheirsSRDiffusion(LightningModule):
         return loss
 
     def training_step(self, batch, batch_idx):
+        if self.auto_sample and self.step_counter % self.sample_every_n_steps == 0:
+            self.sample_and_save_output(batch['LR'], f"{self.logger.log_dir}/sample_{self.step_counter}.png")
+
         loss = self.forward(batch)
         self.log('train/loss', loss)
+        self.step_counter += 1
         return loss
+
+    @torch.no_grad()
+    def sample_and_save_output(self, lr, output_path):
+        """
+        Sample a single image, normalize it, and save into an output file.
+
+        Args:
+            output_path (String): The path to save the image in.
+            sample_size (tuple or int): The spatial dimensions of the image. If an int is passed, it is used for
+                                        both spatial dimensions.
+        """
+        sample = self.sample(lr=lr)
+        save_diffusion_sample(lr, f"{self.logger.log_dir}/sample_{self.step_counter}_conditioning.png")
+        save_diffusion_sample(sample, output_path)
 
     def configure_optimizers(self):
         optim = torch.optim.Adam(self.parameters(), lr=self.initial_lr)

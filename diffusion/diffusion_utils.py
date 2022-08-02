@@ -49,7 +49,7 @@ def save_diffusion_sample(sample, output_path=None, wandb_logger=None):
                 current_sample_output_path = os.path.join(dirname, f'{i}_{fpath}')
                 Image.fromarray(sample[i]).save(current_sample_output_path)
         else:
-            Image.fromarray(sample).save(output_path)
+            Image.fromarray(sample[0]).save(output_path)
 
     if wandb_logger is not None:
         wandb_logger.log_image(key="samples", images=list(sample))
