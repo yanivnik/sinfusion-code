@@ -5,14 +5,10 @@ from torch.utils.data import DataLoader
 
 from common_utils.ben_image import imread
 from config import *
-from datasets.ccg_half_noisy_cropset import CCGHalfNoisyCropSet
-from datasets.cropset import CropSet
-from datasets.ccg_cropset import CCGCropSet
-from datasets.transforms import RandomScaleResize
-from diffusion.diffusion import Diffusion
-from diffusion.diffusion_pyramid_sr import SRDiffusionPyramid
+from datasets.ccg_half_noisy_cropset import CCGSemiNoisyCropSet
+from diffusion.conditional_diffusion import ConditionalDiffusion
+from diffusion.diffusion_pyramid import DiffusionPyramid
 from diffusion.diffusion_utils import save_diffusion_sample
-from diffusion.sr_diffusion import TheirsSRDiffusion
 from metrics.sifid_score import get_sifid_scores
 from models.nextnet import NextNet
 
@@ -22,15 +18,13 @@ def train_single_diffusion(cfg):
     training_steps = 50_000
 
     # Create datasets and data loaders
-    # train_dataset = CropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size))
-    # train_dataset = CCGCropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size))
-    train_dataset = CCGHalfNoisyCropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size), gamma=0.5)
+    train_dataset = CCGSemiNoisyCropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size))
     train_loader = DataLoader(train_dataset, batch_size=1, num_workers=4, shuffle=True)
 
     # Create model and trainer
     model = NextNet(in_channels=6, filters_per_layer=cfg.network_filters, depth=cfg.network_depth)
 
-    diffusion = TheirsSRDiffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=False)
+    diffusion = ConditionalDiffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=True)
 
     model_callbacks = [pl.callbacks.ModelCheckpoint(filename=f'single-level-' + '{step}'),
                        pl.callbacks.ModelSummary(max_depth=-1)]
@@ -52,14 +46,14 @@ def train_pyramid_diffusion(cfg):
     tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/pyramid/", name=cfg.image_name)
 
     print('Training generation pyramid')
-    pyramid = SRDiffusionPyramid(image_path,
-                                 levels=cfg.pyramid_levels,
-                                 size_ratios=cfg.pyramid_coarsest_ratio ** (1.0 / (cfg.pyramid_levels - 1)),
-                                 timesteps=cfg.diffusion_timesteps,
-                                 crop_size=cfg.crop_size,
-                                 network_filters=cfg.network_filters,
-                                 network_depth=cfg.network_depth,
-                                 logger=tb_logger)  # TODO HANDLE WANDB
+    pyramid = DiffusionPyramid(image_path,
+                               levels=cfg.pyramid_levels,
+                               size_ratios=cfg.pyramid_coarsest_ratio ** (1.0 / (cfg.pyramid_levels - 1)),
+                               timesteps=cfg.diffusion_timesteps,
+                               crop_size=cfg.crop_size,
+                               network_filters=cfg.network_filters,
+                               network_depth=cfg.network_depth,
+                               logger=tb_logger)  # TODO HANDLE WANDB
     pyramid.train(training_steps_per_level, log_progress=cfg.log_progress)
 
     print('Sampling generated images from pyramid')
@@ -69,8 +63,7 @@ def train_pyramid_diffusion(cfg):
 
 
 def main():
-    # cfg = BALLOONS_PYRAMID_CONFIG
-    cfg = STARRY_NIGHT_CCG_CONFIG
+    cfg = BIRDS_CCG_CONFIG
     cfg = parse_cmdline_args_to_config(cfg)
 
     if 'CUDA_VISIBLE_DEVICES' not in os.environ:

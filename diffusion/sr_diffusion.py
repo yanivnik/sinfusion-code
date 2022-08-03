@@ -151,9 +151,6 @@ class TheirsSRDiffusion(LightningModule):
         self.register_buffer('posterior_mean_coef2', to_torch(
             (1. - alphas_cumprod_prev) * np.sqrt(alphas) / (1. - alphas_cumprod)))
 
-
-
-
     def predict_start_from_noise(self, x_t, t, noise):
         return self.sqrt_recip_alphas_cumprod[t] * x_t - \
             self.sqrt_recipm1_alphas_cumprod[t] * noise
@@ -226,45 +223,6 @@ class TheirsSRDiffusion(LightningModule):
         e_t = self.model(torch.cat([lr, x_t], dim=1), t_tensor)
         x_0 = (x_t - self.sqrt_one_minus_alphas_cumprod[0] * e_t) / self.sqrt_alphas_cumprod[0]
         return x_0
-
-    # TODO MOVE THIS ELSEWHERE
-    @torch.no_grad()
-    def sample_ccg(self, sample_size, batch_size, window_size, stride, padding_size, method='normal'):
-        """
-        Generate a sample using the conditional-crop-generation method.
-
-        Args:
-            sample_size (tuple(int)): The spatial dimensions of the sample during auto sampling.
-            batch_size (int): The batch size to sample.
-            window_size (tuple(int)):
-            stride (tuple(int)):
-            padding_size (tuple(int)): The spatial dimensions of the zero padding to add.
-        """
-
-        # Initialize image with frame
-        import torchvision
-        sample_shape = (batch_size, self.channels, sample_size[0], sample_size[1])
-        img = torch.randn(sample_shape).to(device=self.device)
-        img = torchvision.transforms.Pad(padding_size)(img)
-
-        # Move sliding window across image to conditionally generate image
-        # TODO THINK ABOUT MAKING THE PROGRESS DIAGONAL HERE. It might improve the algorithm efficiency.
-        for h in range(0, img.shape[-2], stride[0]):
-            for w in range(0, img.shape[-1], stride[1]):
-                if method == 'normal':
-                    img[:, :, h: h + window_size[0], w: w + window_size[1]] = \
-                        self.sample(lr=img[:, :, h: h + window_size[0], w: w + window_size[1]])
-                elif method == 'ddim':
-                    img[:, :, h: h + window_size[0], w: w + window_size[1]] = \
-                        self.sample_ddim(lr=img[:, :, h: h + window_size[0], w: w + window_size[1]], sampling_step_size=50)
-                else:
-                    raise Exception('Unsupported sampling method')
-
-                # TODO REMOVE
-                torchvision.utils.save_image((img + 1) / 2, f'/home/yanivni/data/tmp/ccg/ccg_partial_{h*sample_size[0]+w}.png')
-
-        return img[:, :, padding_size[0]:-padding_size[0], padding_size[1]:-padding_size[1]]
-
 
     def q_sample(self, x_start, continuous_sqrt_alpha_cumprod, noise=None):
         noise = default(noise, lambda: torch.randn_like(x_start))

@@ -66,3 +66,7 @@ def get_pyramid_parameter_as_list(param, pyramid_levels):
     else:
         # Use the same parameter for all levels
         return [param] * pyramid_levels
+
+
+def to_torch(tensor):
+    return torch.tensor(tensor, dtype=torch.float32)
