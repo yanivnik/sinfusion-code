@@ -19,7 +19,7 @@ class NextNet(nn.Module):
         else:
             dims = [filters_per_layer] * depth
 
-        time_dim = filters_per_layer[0]
+        time_dim = dims[0]
         self.depth = depth
         self.layers = nn.ModuleList([])
 
