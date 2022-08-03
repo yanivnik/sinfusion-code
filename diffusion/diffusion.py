@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 from pytorch_lightning import LightningModule
 
-from diffusion.diffusion_utils import extract, cosine_noise_schedule, save_diffusion_sample
+from diffusion.diffusion_utils import extract, cosine_noise_schedule, save_diffusion_sample, to_torch
 
 
 class Diffusion(LightningModule):
@@ -21,9 +21,12 @@ class Diffusion(LightningModule):
             initial_lr (float):
                 The initial learning rate for the diffusion training.
             recon_loss_factor (float):
-
+                The weight to apply to the reconstruction loss during training. If this is 0,
+                reconstruction loss is not used. NOTICE - using reconstruction loss might severly decrease
+                performance.
             recon_image (torch.tensor):
-
+                The image to use during reconstruction loss. The loss is an MSE between this given image and
+                the result of deterministic sampling (AKA reconstruction) from a constant noise.
             auto_sample (bool):
                 Should the model perform sampling during training.
                 If False, the following sampling parameters are ignored.
@@ -60,26 +63,20 @@ class Diffusion(LightningModule):
         alphas_hat = np.cumprod(alphas, axis=0)
         alphas_hat_prev = np.append(1., alphas_hat[:-1])
 
-        self.register_buffer('betas', torch.tensor(betas, dtype=torch.float32))
-        self.register_buffer('alphas_hat', torch.tensor(alphas_hat, dtype=torch.float32))
-        self.register_buffer('alphas_hat_prev', torch.tensor(alphas_hat_prev, dtype=torch.float32))
-
-        # calculations for diffusion q(x_t | x_{t-1}) and others
-        self.register_buffer('sqrt_alphas_hat', torch.tensor(np.sqrt(alphas_hat), dtype=torch.float32))
-        self.register_buffer('sqrt_one_minus_alphas_hat', torch.tensor(np.sqrt(1. - alphas_hat), dtype=torch.float32))
-        self.register_buffer('log_one_minus_alphas_hat', torch.tensor(np.log(1. - alphas_hat), dtype=torch.float32))
-        self.register_buffer('sqrt_recip_alphas_hat', torch.tensor(np.sqrt(1. / alphas_hat), dtype=torch.float32))
-        self.register_buffer('sqrt_recipm1_alphas_hat', torch.tensor(np.sqrt(1. / alphas_hat - 1), dtype=torch.float32))
-
-        # calculations for posterior q(x_{t-1} | x_t, x_0)
+        self.register_buffer('betas', to_torch(betas))
+        self.register_buffer('alphas_hat', to_torch(alphas_hat))
+        self.register_buffer('alphas_hat_prev', to_torch(alphas_hat_prev))
+        self.register_buffer('sqrt_alphas_hat', to_torch(np.sqrt(alphas_hat)))
+        self.register_buffer('sqrt_one_minus_alphas_hat', to_torch(np.sqrt(1. - alphas_hat)))
+        self.register_buffer('log_one_minus_alphas_hat', to_torch(np.log(1. - alphas_hat)))
+        self.register_buffer('sqrt_recip_alphas_hat', to_torch(np.sqrt(1. / alphas_hat)))
+        self.register_buffer('sqrt_recipm1_alphas_hat', to_torch(np.sqrt(1. / alphas_hat - 1)))
         posterior_variance = betas * (1. - alphas_hat_prev) / (1. - alphas_hat)
-
-        self.register_buffer('posterior_variance', torch.tensor(posterior_variance, dtype=torch.float32))
-
-        # below: log calculation clipped because the posterior variance is 0 at the beginning of the diffusion chain
-        self.register_buffer('posterior_log_variance_clipped', torch.tensor(np.log(np.maximum(posterior_variance, 1e-20)), dtype=torch.float32))
-        self.register_buffer('posterior_mean_coef1', torch.tensor(betas * np.sqrt(alphas_hat_prev) / (1. - alphas_hat), dtype=torch.float32))
-        self.register_buffer('posterior_mean_coef2', torch.tensor((1. - alphas_hat_prev) * np.sqrt(alphas) / (1. - alphas_hat), dtype=torch.float32))
+        self.register_buffer('posterior_variance', to_torch(posterior_variance))
+        self.register_buffer('posterior_log_variance_clipped', to_torch(np.log(np.maximum(posterior_variance, 1e-20))))
+        self.register_buffer('posterior_mean_coef1', to_torch(betas * np.sqrt(alphas_hat_prev) / (1. - alphas_hat)))
+        self.register_buffer('posterior_mean_coef2',
+                             to_torch((1. - alphas_hat_prev) * np.sqrt(alphas) / (1. - alphas_hat)))
 
     def q_mean_variance(self, x_start, t):
         mean = extract(self.sqrt_alphas_hat, t, x_start.shape) * x_start
@@ -244,7 +241,7 @@ class Diffusion(LightningModule):
 
         loss = F.mse_loss(noise, noise_recon)
 
-        if self.recon_loss_factor > 0 and self.i % 40 == 0:
+        if self.recon_loss_factor > 0 and self.i % 5 == 0:
             # Add a reconstruction loss between the original image and the DDIM
             # sampling result of the constant reconstruction noise.
             generated_image = self.sample_ddim(x_T=self.recon_noise, sampling_step_size=self.num_timesteps // 10)
