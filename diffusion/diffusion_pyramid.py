@@ -75,8 +75,8 @@ class DiffusionPyramid(object):
                                   depth=self.network_depth[i]))
 
         self.diffusion_models.append(Diffusion(model=models[0], timesteps=self.timesteps[0], auto_sample=False,
-                                               recon_loss_factor=0, recon_image=self.images[
-                0]))  # Currently disabled recon loss for faster training
+                                               recon_loss_factor=0, recon_image=self.images[0]))  # Currently disabled recon loss for faster training
+
         for i in range(1, self.levels):
             # self.diffusion_models.append(SRDiffusion(model=models[i], timesteps=self.timesteps[i]))
 

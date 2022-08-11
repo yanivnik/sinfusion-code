@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torchvision
 from pytorch_lightning import LightningModule
 
+from common_utils.resize_right import resize
 from diffusion.diffusion_utils import cosine_noise_schedule, save_diffusion_sample, to_torch
 
 
@@ -114,6 +115,7 @@ class ConditionalDiffusion(LightningModule):
             img = self.p_sample(img, i, condition_x=condition)
         return img
 
+    @torch.no_grad()
     def sample_ddim(self, condition, x_T=None, sampling_step_size=100):
         """
         Sample from the model, using the DDIM sampling process.

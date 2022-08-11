@@ -6,13 +6,14 @@ class CropSet(Dataset):
     """
     A dataset comprised of crops of various augmentation of a single image.
     """
-    def __init__(self, image, crop_size):
+    def __init__(self, image, crop_size, dataset_size=5000):
         """
         Args:
             image (torch.tensor): The image to generate crops from.
             crop_size (tuple(int, int)): The spatial dimensions of the crops to be taken.
         """
         self.crop_size = crop_size
+        self.dataset_size = dataset_size
 
         self.transform = transforms.Compose([
             transforms.RandomHorizontalFlip(),
@@ -23,7 +24,7 @@ class CropSet(Dataset):
         self.img = image
 
     def __len__(self):
-        return 5000  # This is a high number to avoid overhead for pytorch_lightning
+        return self.dataset_size  # This is a high number to avoid overhead for pytorch_lightning
 
     def __getitem__(self, item):
         return self.transform(self.img)

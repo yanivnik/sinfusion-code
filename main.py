@@ -6,7 +6,9 @@ from torch.utils.data import DataLoader
 from common_utils.ben_image import imread
 from config import *
 from datasets.ccg_half_noisy_cropset import CCGSemiNoisyCropSet
+from datasets.cropset import CropSet
 from diffusion.conditional_diffusion import ConditionalDiffusion
+from diffusion.diffusion import Diffusion
 from diffusion.diffusion_pyramid import DiffusionPyramid
 from diffusion.diffusion_utils import save_diffusion_sample
 from metrics.sifid_score import get_sifid_scores
@@ -15,30 +17,48 @@ from models.nextnet import NextNet
 
 def train_single_diffusion(cfg):
     # Training hyperparameters
-    training_steps = 50_000
+    training_steps = 100_000
 
     # Create datasets and data loaders
-    train_dataset = CCGSemiNoisyCropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size))
+    # train_dataset = CCGSemiNoisyCropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size))
+    train_dataset = CropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size), dataset_size=5000)
     train_loader = DataLoader(train_dataset, batch_size=1, num_workers=4, shuffle=True)
+    val_dataset = CropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size), dataset_size=10)
+    val_loader = DataLoader(val_dataset, batch_size=val_dataset.dataset_size, num_workers=4)
 
     # Create model and trainer
-    model = NextNet(in_channels=6, filters_per_layer=cfg.network_filters, depth=cfg.network_depth)
+    # model = NextNet(in_channels=6, filters_per_layer=cfg.network_filters, depth=cfg.network_depth)
+    model = NextNet(in_channels=3, filters_per_layer=cfg.network_filters, depth=cfg.network_depth)
 
-    diffusion = ConditionalDiffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=True)
+    # diffusion = ConditionalDiffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=False)
+    diffusion = Diffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=False)
 
+    # TODO REMOVE
+    # TODO REMOVE
+    # TODO REMOVE
+    diffusion = Diffusion.load_from_checkpoint('/home/yanivni/data/remote_projects/single-image-diffusion/lightning_logs/balloons.png/10-simple-diffusion-huge-crops-nextnet-depth-16/checkpoints/single-level-step=49999.ckpt'
+                                               , auto_sample=False, model=NextNet(depth=16), timesteps=500).to(device='cuda:0')
+    # TODO REMOVE
+    # TODO REMOVE
+    # TODO REMOVE
+
+    #model_callbacks = [pl.callbacks.ModelCheckpoint(filename=f'single-level-' + '{step}-{val_loss:.2f}', save_top_k=3, monitor='val_loss', mode='min'),
     model_callbacks = [pl.callbacks.ModelCheckpoint(filename=f'single-level-' + '{step}'),
+#                       pl.callbacks.EarlyStopping(monitor='val_loss', patience=5, check_on_train_epoch_end=False),
                        pl.callbacks.ModelSummary(max_depth=-1)]
-    #wandb_logger = pl.loggers.WandbLogger(project=cfg.project_name)
-    tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/", name=cfg.image_name)
-    trainer = pl.Trainer(max_steps=training_steps, log_every_n_steps=10, gpus=1, auto_select_gpus=True,
-                         logger=tb_logger, callbacks=model_callbacks)
 
-    # Train model (samples are generated during training)
-    trainer.fit(diffusion, train_loader)
+    tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/", name=cfg.image_name)
+    trainer = pl.Trainer(max_steps=training_steps,# val_check_interval=0.2,
+                         gpus=1, auto_select_gpus=True,
+                         logger=tb_logger, log_every_n_steps=10,
+                         callbacks=model_callbacks)
+
+    # Train model
+    trainer.fit(diffusion, train_loader)#, val_loader)
 
 
 def train_pyramid_diffusion(cfg):
-    training_steps_per_level = [30_000] * cfg.pyramid_levels
+    training_steps_per_level = [50_000] + [1] * (cfg.pyramid_levels - 1)
     sample_batch_size = 16
     image_path = f'./images/{cfg.image_name}'
 
@@ -63,15 +83,18 @@ def train_pyramid_diffusion(cfg):
 
 
 def main():
-    cfg = BIRDS_CCG_CONFIG
+    cfg = BALLOONS_CCG_CONFIG
     cfg = parse_cmdline_args_to_config(cfg)
 
     if 'CUDA_VISIBLE_DEVICES' not in os.environ:
         os.environ['CUDA_VISIBLE_DEVICES'] = cfg.available_gpus
 
     log_config(cfg)
-    #train_pyramid_diffusion(cfg)
-    train_single_diffusion(cfg)
+
+    if cfg.pyramid_levels is not None:
+        train_pyramid_diffusion(cfg)
+    else:
+        train_single_diffusion(cfg)
 
 
 if __name__ == '__main__':
