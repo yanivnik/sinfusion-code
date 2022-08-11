@@ -19,16 +19,6 @@ def cosine_noise_schedule(timesteps, s=0.008):
     return np.clip(betas, a_min=0, a_max=0.999)
 
 
-def extract(a, t, x_shape):
-    """
-    Get the values from a in location t, broadcasted to x_shape.
-    """
-    b, *_ = t.shape
-    out = a.gather(-1, t)
-    y = out.reshape(b, *((1,) * (len(x_shape) - 1)))
-    return y
-
-
 def save_diffusion_sample(sample, output_path=None, wandb_logger=None):
     """
     Normalizes the image which was sampled from a diffusion model and saves it to an output file.

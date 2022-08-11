@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -10,7 +12,7 @@ from diffusion.diffusion_utils import cosine_noise_schedule, save_diffusion_samp
 
 class ConditionalDiffusion(LightningModule):
     def __init__(self, model, channels=3, timesteps=1000,
-                 initial_lr=2e-4, recon_loss_factor=0.0, recon_image=None, recon_condition_image=None,
+                 initial_lr=2e-4,
                  auto_sample=True, sample_every_n_steps=1000):
         """
         Args:
@@ -22,15 +24,6 @@ class ConditionalDiffusion(LightningModule):
                 The amount of timesteps used to generate the noising schedule.
             initial_lr (float):
                 The initial learning rate for the diffusion training.
-            recon_loss_factor (float):
-                The weight to apply to the reconstruction loss during training. If this is 0,
-                reconstruction loss is not used. NOTICE - using reconstruction loss might severly decrease
-                performance.
-            recon_image (torch.tensor):
-                The image to use during reconstruction loss. The loss is an MSE between this given image and
-                the result of deterministic sampling (AKA reconstruction) from a constant noise.
-            recon_condition_image (torch.tensor):
-                The image used as input to the deterministic sampling as conditioning when calculating the recon loss.
             auto_sample (bool):
                 Should the model perform sampling during training.
                 If False, the following sampling parameters are ignored.
@@ -47,14 +40,6 @@ class ConditionalDiffusion(LightningModule):
         self.channels = channels
         self.model = model
         self.initial_lr = initial_lr
-
-        self.recon_loss_factor = recon_loss_factor
-        self.i = 0
-        if self.recon_loss_factor > 0:
-            assert recon_image is not None
-            self.register_buffer('recon_image', (recon_image * 2) - 1)
-            self.register_buffer('recon_condition_image', (recon_condition_image * 2) - 1)
-            self.register_buffer('recon_noise', torch.randn_like(recon_image))
 
         betas = cosine_noise_schedule(timesteps)
         betas = betas.detach().cpu().numpy() if isinstance(betas, torch.Tensor) else betas
@@ -193,63 +178,35 @@ class ConditionalDiffusion(LightningModule):
         return continuous_sqrt_alpha_hat * x_start + (1 - continuous_sqrt_alpha_hat ** 2).sqrt() * noise
 
     def forward(self, x_in, noise=None):
-        self.i += 1
-
         x_start = x_in['IMG']
         b = x_start.shape[0]
         t = np.random.randint(1, self.num_timesteps + 1)
-        continuous_sqrt_alpha_hat = torch.FloatTensor(
-            np.random.uniform(
-                self.sqrt_alphas_hat_prev[t - 1],
-                self.sqrt_alphas_hat_prev[t],
-                size=b
-            )
-        ).to(x_start.device)
-        continuous_sqrt_alpha_hat = continuous_sqrt_alpha_hat.view(
-            b, -1)
+        continuous_sqrt_alpha_hat = torch.FloatTensor(np.random.uniform(
+            self.sqrt_alphas_hat_prev[t - 1],
+            self.sqrt_alphas_hat_prev[t],
+            size=b
+        )).to(x_start.device).view(b, -1)
 
         noise = torch.randn_like(x_start)
         x_noisy = self.q_sample(x_start=x_start,
                                 continuous_sqrt_alpha_hat=continuous_sqrt_alpha_hat.view(-1, 1, 1, 1),
                                 noise=noise)
 
-        x_recon = self.model(
+        noise_recon = self.model(
             torch.cat([x_in['CONDITION_IMG'], x_noisy], dim=1), continuous_sqrt_alpha_hat.view(-1))
 
-        loss = F.mse_loss(noise, x_recon)
-
-        if self.recon_loss_factor > 0 and self.i % 5 == 0:
-            # Add a reconstruction loss between the original image and the DDIM
-            # sampling result of the constant reconstruction noise.
-            generated_image = self.sample_ddim(condition=self.recon_condition_image,
-                                               x_T=self.recon_noise,
-                                               sampling_step_size=self.num_timesteps // 10)
-            loss = loss + F.mse_loss(generated_image, self.recon_image.unsqueeze(0))
-
-        return loss
+        return F.mse_loss(noise, noise_recon)
 
     def training_step(self, batch, batch_idx):
         if self.auto_sample and self.step_counter % self.sample_every_n_steps == 0:
-            self.sample_and_save_output(batch['CONDITION_IMG'], f"{self.logger.log_dir}/sample_{self.step_counter}.png")
+            sample = self.sample(condition=batch['CONDITION_IMG'])
+            save_diffusion_sample(batch['CONDITION_IMG'], os.path.join(self.logger.log_dir, f'sample_{self.step_counter}_conditioning.png'))
+            save_diffusion_sample(sample, os.path.join(self.logger.log_dir, f'sample_{self.step_counter}.png'))
 
         loss = self.forward(batch)
         self.log('train/loss', loss)
         self.step_counter += 1
         return loss
-
-    @torch.no_grad()
-    def sample_and_save_output(self, condition, output_path):
-        """
-        Sample a single image, normalize it, and save into an output file.
-
-        Args:
-            output_path (String): The path to save the image in.
-            sample_size (tuple or int): The spatial dimensions of the image. If an int is passed, it is used for
-                                        both spatial dimensions.
-        """
-        sample = self.sample(condition=condition)
-        save_diffusion_sample(condition, f"{self.logger.log_dir}/sample_{self.step_counter}_conditioning.png")
-        save_diffusion_sample(sample, output_path)
 
     def configure_optimizers(self):
         optim = torch.optim.Adam(self.parameters(), lr=self.initial_lr)

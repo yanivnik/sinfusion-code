@@ -33,15 +33,6 @@ def train_single_diffusion(cfg):
     # diffusion = ConditionalDiffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=False)
     diffusion = Diffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=False)
 
-    # TODO REMOVE
-    # TODO REMOVE
-    # TODO REMOVE
-    diffusion = Diffusion.load_from_checkpoint('/home/yanivni/data/remote_projects/single-image-diffusion/lightning_logs/balloons.png/10-simple-diffusion-huge-crops-nextnet-depth-16/checkpoints/single-level-step=49999.ckpt'
-                                               , auto_sample=False, model=NextNet(depth=16), timesteps=500).to(device='cuda:0')
-    # TODO REMOVE
-    # TODO REMOVE
-    # TODO REMOVE
-
     #model_callbacks = [pl.callbacks.ModelCheckpoint(filename=f'single-level-' + '{step}-{val_loss:.2f}', save_top_k=3, monitor='val_loss', mode='min'),
     model_callbacks = [pl.callbacks.ModelCheckpoint(filename=f'single-level-' + '{step}'),
 #                       pl.callbacks.EarlyStopping(monitor='val_loss', patience=5, check_on_train_epoch_end=False),
@@ -83,7 +74,7 @@ def train_pyramid_diffusion(cfg):
 
 
 def main():
-    cfg = BALLOONS_CCG_CONFIG
+    cfg = STARRY_NIGHT_CCG_CONFIG
     cfg = parse_cmdline_args_to_config(cfg)
 
     if 'CUDA_VISIBLE_DEVICES' not in os.environ:
