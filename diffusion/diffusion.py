@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from pytorch_lightning import LightningModule
 
 from diffusion.diffusion_utils import extract, cosine_noise_schedule, save_diffusion_sample, to_torch
+from metrics.swd_score import get_swd_scores
 
 
 class Diffusion(LightningModule):
@@ -37,8 +38,6 @@ class Diffusion(LightningModule):
                 The spatial dimensions of the sample during auto sampling.
         """
         super().__init__()
-
-        self.save_hyperparameters()
 
         self.step_counter = 0  # Overall step counter used to sample every n global steps
         self.auto_sample = auto_sample
@@ -113,8 +112,7 @@ class Diffusion(LightningModule):
         b, *_ = x.shape
         model_mean, _, model_log_variance = self.p_mean_variance(x=x, t=t, clip_denoised=clip_denoised)
         noise = torch.randn_like(x)
-        # no noise when t == 0
-        nonzero_mask = (1 - (t == 0).float()).reshape(b, *((1,) * (len(x.shape) - 1)))
+        nonzero_mask = (1 - (t == 0).float()).reshape(b, *((1,) * (len(x.shape) - 1))) # no noise when t == 0
         return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
 
     @torch.no_grad()
@@ -129,6 +127,7 @@ class Diffusion(LightningModule):
             img = self.p_sample(img, t_tensor)
         return img
 
+    @torch.no_grad()
     def sample_ddim(self, x_T=None, image_size=(32, 32), batch_size=16, sampling_step_size=100):
         """
         Sample from the model, using the DDIM sampling process.
@@ -160,6 +159,8 @@ class Diffusion(LightningModule):
             t_next_tensor = torch.full((batch_size,), t_next, dtype=torch.int64, device=self.device)
 
             e_t = self.model(x_t, t_tensor)
+
+            # TODO REPLACE WITH - predicted_x0 = self.predict_start_from_noise(x_t, t_tensor, e_t)
             predicted_x0 = (x_t - extract(self.sqrt_one_minus_alphas_hat, t_tensor, x_t.shape) * e_t) / \
                            extract(self.sqrt_alphas_hat, t_tensor, x_t.shape)
             if t > 0:
@@ -169,29 +170,6 @@ class Diffusion(LightningModule):
                 x_t = predicted_x0
 
         return x_t
-
-    @torch.no_grad()
-    def sample_interpolate(self, x_T1, x_T2, interp_seq_len=100):
-        """
-        Given two instances of noisy images, returns the sequence of interpolations between them.
-        The interpolations are calculated using spherical linear interpolation.
-        """
-        assert x_T1.shape == x_T2.shape
-
-        x_T_samples = []
-        theta = torch.acos(torch.sum(x_T1 * x_T2) / (torch.norm(x_T1) * torch.norm(x_T2)))
-        for alpha in torch.arange(0.0, 1.01, 1.0 / interp_seq_len):
-            x_T_alpha = (torch.sin((1 - alpha) * theta) / torch.sin(theta)) * x_T1 + \
-                        (torch.sin(alpha * theta) / torch.sin(theta)) * x_T2
-            x_T_samples.append(x_T_alpha.unsqueeze(0))
-        x_T_samples = torch.cat(x_T_samples, dim=0).moveaxis(0, 1)
-
-        x_0_samples_batch = []
-        for index in range(len(x_T1)):
-            x_0_samples = self.sample_ddim(x_T=x_T_samples[index], sampling_step_size=10)
-            x_0_samples_batch.append(x_0_samples.unsqueeze(0))
-
-        return torch.cat(x_0_samples_batch, dim=0)
 
     @torch.no_grad()
     def sample_and_save_output(self, output_path, sample_size):
@@ -255,9 +233,15 @@ class Diffusion(LightningModule):
                                         sample_size=self.sample_size)
 
         loss = self.forward(batch)
-        self.log('train/loss', loss)
+        self.log('train_loss', loss)
         self.step_counter += 1
         return loss
+
+    def validation_step2(self, batch, batch_idx):
+        samples = self.sample(image_size=batch.shape[-2:], batch_size=1)
+        val_loss = get_swd_scores(batch, samples)
+        self.log('val_loss', val_loss)
+        return val_loss
 
     def configure_optimizers(self):
         optim = torch.optim.Adam(self.parameters(), lr=self.initial_lr)
