@@ -17,7 +17,7 @@ from models.nextnet import NextNet
 
 def train_simple_diffusion(cfg):
     # Training hyperparameters
-    training_steps = 100_000
+    training_steps = 200_000
 
     # Create training datasets and data loaders
     train_dataset = CropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size))

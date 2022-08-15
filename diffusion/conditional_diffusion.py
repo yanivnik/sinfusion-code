@@ -210,4 +210,5 @@ class ConditionalDiffusion(LightningModule):
 
     def configure_optimizers(self):
         optim = torch.optim.Adam(self.parameters(), lr=self.initial_lr)
-        return optim
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optim, milestones=[100_000], gamma=0.1, verbose=True)
+        return {'optimizer': optim, 'scheduler': scheduler}
