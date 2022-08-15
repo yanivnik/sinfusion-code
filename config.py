@@ -10,14 +10,16 @@ class Config:
     # Deployment configuration options
     log_progress = True     # Should loggers log training progress bar
     available_gpus = '1'    # list of available gpus (in CUDA_VISIBLE_DEVICES format)
+    eval_during_training = False  # Should perform valuation loop during training
 
     # Diffusion configuration options
     diffusion_timesteps = 500
+    training_method = 'simple'
 
     # Backbone model and dataset configuration options
     network_filters = 64    # Amount of filters in backbone network conv layers
     network_depth = 9
-    crop_size = 19
+    crop_size = 128
 
     # Optimization configuration options
     initial_lr = 0.0002
@@ -40,6 +42,7 @@ def log_config(cfg):
 def parse_cmdline_args_to_config(cfg):
     parser = argparse.ArgumentParser(description='Command line configuration')
     parser.add_argument('--image_name', type=str, help='The image to train the model on')
+    parser.add_argument('--training_method', type=str, choices=['simple', 'ccg', 'pyramid'], help='The type of training mechanism')
     parser.add_argument('--pyramid_levels', type=int, help='Amount of levels in the generation pyramid')
     parser.add_argument('--pyramid_coarsest_ratio', type=float, help='Size ratio between the coarsest image in the pyramid and the original image')
     parser.add_argument('--diffusion_timesteps', type=int, help='Amount of diffusion timesteps to perform per level')
@@ -77,16 +80,6 @@ BALLOONS_CCG_CONFIG.diffusion_timesteps = 500
 BALLOONS_CCG_CONFIG.crop_size = 185
 BALLOONS_CCG_CONFIG.network_depth = 16
 BALLOONS_CCG_CONFIG.network_filters = 64
-#BALLOONS_CCG_CONFIG.network_filters = [32, 64, 64, 128, 256, 128, 64, 64, 32] # TODO YANIV: LOOK INTO CHANGING NUMBER OF FILTERS PER CONVNEXT BLOCK
-
-BALLOONS_MEDIUM_CCG_CONFIG = Config()
-BALLOONS_MEDIUM_CCG_CONFIG.image_name = 'balloons_medium.png'
-BALLOONS_MEDIUM_CCG_CONFIG.pyramid_levels = None
-BALLOONS_MEDIUM_CCG_CONFIG.pyramid_coarsest_ratio = None
-BALLOONS_MEDIUM_CCG_CONFIG.diffusion_timesteps = 500
-BALLOONS_MEDIUM_CCG_CONFIG.crop_size = 64
-BALLOONS_MEDIUM_CCG_CONFIG.network_depth = 9
-BALLOONS_MEDIUM_CCG_CONFIG.network_filters = [32, 64, 64, 128, 256, 128, 64, 64, 32] # TODO YANIV: LOOK INTO CHANGING NUMBER OF FILTERS PER CONVNEXT BLOCK
 
 STARRY_NIGHT_CCG_CONFIG = Config()
 STARRY_NIGHT_CCG_CONFIG.image_name = 'starry_night.png'
