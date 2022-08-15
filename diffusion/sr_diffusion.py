@@ -1,94 +1,13 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-
-from diffusion.diffusion import Diffusion
-
-
-# TODO IF THIS SR WORKS WELL THAN REFACTOR IT INTO THE DIFFUSION CLASS
-class SRDiffusion(Diffusion):
-    """
-    A basic implementation of SR3 diffusion.
-    """
-    def __init__(self, model, timesteps):
-        super().__init__(model, timesteps=timesteps, auto_sample=False)
-
-        self.sqrt_alphas_hat_prev = np.sqrt(self.alphas_hat_prev.cpu().numpy())
-
-    def forward(self, x, *args, **kwargs):
-        x_hr, x_lr = x['HR'], x['LR']
-        batch_size = x_hr.shape[0]
-
-        t = torch.randint(0, self.num_timesteps, (batch_size,), dtype=torch.int64, device=self.device)
-        #t = np.random.randint(1, self.num_timesteps)
-        #continuous_sqrt_alphas_hat = torch.FloatTensor(
-        #    np.random.uniform(self.sqrt_alphas_hat_prev[t - 1],
-        #                      self.sqrt_alphas_hat_prev[t],
-        #                      size=batch_size)
-        #).to(device=x_hr.device).view(batch_size)
-
-        noise = torch.randn_like(x_hr)
-        # x_hr_noisy = self.q_sample(x_start=x_hr, continuous_sqrt_alphas_hat=continuous_sqrt_alphas_hat, noise=noise)
-        x_hr_noisy = self.q_sample(x_start=x_hr, t=t, noise=noise)
-        noise_recon = self.model(torch.cat([x_lr, x_hr_noisy], dim=1), t)
-        return F.mse_loss(noise, noise_recon)
-
-    # def q_sample(self, x_start, continuous_sqrt_alphas_hat, noise=None):
-    #     if noise is None:
-    #         noise = torch.randn_like(x_start)
-    #     return continuous_sqrt_alphas_hat * x_start + (1 - continuous_sqrt_alphas_hat ** 2).sqrt() * noise
-
-    @torch.no_grad()
-    def sample(self, lr, image_size):
-        batch_size = lr.shape[0]
-        image_size = image_size if isinstance(image_size, tuple) else (image_size, image_size)
-        sample_shape = (batch_size, self.channels, image_size[0], image_size[1])
-
-        hr_img = torch.randn(sample_shape, device=self.device)
-        for t in reversed(range(0, self.num_timesteps)):
-            t_tensor = torch.full((batch_size, ), t, dtype=torch.int64, device=self.device)
-            hr_img = self.p_sample_conditioned(hr_img, lr, t_tensor)
-        return hr_img
-
-
-    @torch.no_grad()
-    def p_sample_conditioned(self, x_hr, x_lr, t, clip_denoised=True):
-        b, *_ = x_hr.shape
-        model_mean, _, model_log_variance = self.p_mean_variance_conditioned(x_hr=x_hr, x_lr=x_lr, t=t, clip_denoised=clip_denoised)
-        noise = torch.randn_like(x_hr)
-        # no noise when t == 0 # TODO REWRITE BETTER
-        nonzero_mask = (1 - (t == 0).float()).reshape(b, *((1,) * (len(x_hr.shape) - 1)))
-        return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
-
-    @torch.no_grad()
-    def p_mean_variance_conditioned(self, x_hr, x_lr, t, clip_denoised):
-        x_recon = self.predict_start_from_noise(x_hr, t=t, noise=self.model(torch.cat([x_lr, x_hr], dim=1), t))
-
-        if clip_denoised:
-            x_recon.clamp_(-1., 1.)
-
-        model_mean, posterior_variance, posterior_log_variance = self.q_posterior(x_start=x_recon, x_t=x_hr, t=t)
-        return model_mean, posterior_variance, posterior_log_variance
-
-
-
-
-
-
-
-from inspect import isfunction
-def exists(x):
-    return x is not None
-from functools import partial
-
-def default(val, d):
-    if exists(val):
-        return val
-    return d() if isfunction(d) else d
-from diffusion.diffusion_utils import cosine_noise_schedule, save_diffusion_sample
 from pytorch_lightning import LightningModule
-class TheirsSRDiffusion(LightningModule):
-    def __init__(self, model, channels=3, timesteps=1000, recon_loss_factor=0.0, recon_image=None, recon_image_lr=None, initial_lr=2e-4, auto_sample=True):
+
+from diffusion.diffusion_utils import cosine_noise_schedule, save_diffusion_sample, to_torch
+
+
+class SRDiffusion(LightningModule):
+    def __init__(self, model, channels=3, timesteps=1000, initial_lr=2e-4, auto_sample=True):
         super().__init__()
 
         self.step_counter = 0  # Overall step counter used to sample every n global steps
@@ -98,16 +17,6 @@ class TheirsSRDiffusion(LightningModule):
         self.channels = channels
         self.model = model
         self.initial_lr = initial_lr
-
-        self.recon_loss_factor = recon_loss_factor
-        self.i = 0
-        if self.recon_loss_factor > 0:
-            assert recon_image is not None
-            self.register_buffer('recon_image', (recon_image * 2) - 1)
-            self.register_buffer('recon_image_lr', (recon_image_lr * 2) - 1)
-            self.register_buffer('recon_noise', torch.randn_like(recon_image))
-
-        to_torch = partial(torch.tensor, dtype=torch.float32)
 
         betas = cosine_noise_schedule(timesteps)
         betas = betas.detach().cpu().numpy() if isinstance(
@@ -225,7 +134,8 @@ class TheirsSRDiffusion(LightningModule):
         return x_0
 
     def q_sample(self, x_start, continuous_sqrt_alpha_cumprod, noise=None):
-        noise = default(noise, lambda: torch.randn_like(x_start))
+        if noise is None:
+            noise = torch.randn_like(x_start)
 
         # random gama
         return (
@@ -252,20 +162,9 @@ class TheirsSRDiffusion(LightningModule):
         noise = torch.randn_like(x_start)
         x_noisy = self.q_sample(x_start=x_start, continuous_sqrt_alpha_cumprod=continuous_sqrt_alpha_cumprod.view(-1, 1, 1, 1), noise=noise)
 
-        x_recon = self.model(
-            torch.cat([x_in['LR'], x_noisy], dim=1), continuous_sqrt_alpha_cumprod.view(-1))
+        x_recon = self.model(torch.cat([x_in['LR'], x_noisy], dim=1), continuous_sqrt_alpha_cumprod.view(-1))
 
-        loss = F.mse_loss(noise, x_recon)
-
-        if self.recon_loss_factor > 0 and self.i % 5 == 0:
-            # Add a reconstruction loss between the original image and the DDIM
-            # sampling result of the constant reconstruction noise.
-            generated_image = self.sample_ddim(lr=self.recon_image_lr,
-                                               x_T=self.recon_noise,
-                                               sampling_step_size=self.num_timesteps // 10)
-            loss = loss + F.mse_loss(generated_image, self.recon_image.unsqueeze(0))
-
-        return loss
+        return F.mse_loss(noise, x_recon)
 
     def training_step(self, batch, batch_idx):
         if self.auto_sample and self.step_counter % self.sample_every_n_steps == 0:

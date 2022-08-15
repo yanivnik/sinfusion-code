@@ -24,11 +24,10 @@ def train_simple_diffusion(cfg):
     train_loader = DataLoader(train_dataset, batch_size=1, num_workers=4, shuffle=True)
 
     # Create evaluation datasets and data loaders
+    val_loader = None
     if cfg.eval_during_training:
         val_dataset = CropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size), dataset_size=10)
         val_loader = DataLoader(val_dataset, batch_size=val_dataset.dataset_size, num_workers=4)
-    else:
-        val_loader = None
 
     # Create model
     model = NextNet(in_channels=3, filters_per_layer=cfg.network_filters, depth=cfg.network_depth)
@@ -62,12 +61,11 @@ def train_ccg_diffusion(cfg):
     train_loader = DataLoader(train_dataset, batch_size=1, num_workers=4, shuffle=True)
 
     # Create evaluation datasets and data loaders
+    val_loader = None
     if cfg.eval_during_training:
         val_dataset = CCGSemiNoisyCropSet(image=imread(f'./images/{cfg.image_name}')[0],
                                           crop_size=(cfg.crop_size, cfg.crop_size), dataset_size=10)
         val_loader = DataLoader(val_dataset, batch_size=val_dataset.dataset_size, num_workers=4)
-    else:
-        val_loader = None
 
     # Create model
     model = NextNet(in_channels=6, filters_per_layer=cfg.network_filters, depth=cfg.network_depth)

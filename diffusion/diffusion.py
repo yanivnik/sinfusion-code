@@ -159,8 +159,7 @@ class Diffusion(LightningModule):
         batch_size = x.shape[0]
 
         # Sample t uniformly
-        # t = torch.randint(0, self.num_timesteps, (batch_size,), dtype=torch.int64, device=self.device)
-        t = np.random.randint(1, self.num_timesteps)
+        t = np.random.randint(0, self.num_timesteps)
 
         # Generate white noise
         noise = torch.randn_like(x)

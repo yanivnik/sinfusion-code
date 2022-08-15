@@ -10,7 +10,7 @@ from datasets.sr_cropset import SRCropSet
 from diffusion.diffusion import Diffusion
 from diffusion.diffusion_utils import get_pyramid_parameter_as_list
 from diffusion.diffusion_utils import save_diffusion_sample
-from diffusion.sr_diffusion import TheirsSRDiffusion
+from diffusion.sr_diffusion import SRDiffusion
 from models.nextnet import NextNet
 
 
@@ -69,38 +69,19 @@ class DiffusionPyramid(object):
         models = [NextNet(filters_per_layer=self.network_filters[0], depth=self.network_depth[0])]
 
         for i in range(1, self.levels):
-            # models.append(ZSSRNet(in_channels=6, filters_per_layer=self.network_filters[i],
-            #                      depth=self.network_depth[i]))
             models.append(NextNet(in_channels=6, filters_per_layer=self.network_filters[i],
                                   depth=self.network_depth[i]))
 
-        self.diffusion_models.append(Diffusion(model=models[0], timesteps=self.timesteps[0], auto_sample=False,
-                                               recon_loss_factor=0, recon_image=self.images[0]))  # Currently disabled recon loss for faster training
+        self.diffusion_models.append(Diffusion(model=models[0], timesteps=self.timesteps[0], auto_sample=False))
 
         for i in range(1, self.levels):
-            # self.diffusion_models.append(SRDiffusion(model=models[i], timesteps=self.timesteps[i]))
-
             # This uses the hacky model which implements the continous sampling trick from WaveGrad.
-            # TODO: Delete the hacky model and implement the sampling trick normally
-            self.diffusion_models.append(TheirsSRDiffusion(model=models[i], timesteps=self.timesteps[i],
-                                                           recon_loss_factor=0,
-                                                           # Currently disabled recon loss for faster training
-                                                           recon_image=self.images[i].unsqueeze(0),
-                                                           recon_image_lr=resize(self.images[i - 1],
-                                                                                 out_shape=self.images[
-                                                                                     i].shape).unsqueeze(0)))
+            self.diffusion_models.append(SRDiffusion(model=models[i], timesteps=self.timesteps[i]))
 
     def initialize_datasets(self):
-        laplace = [self.images[0]]
-        for level in range(1, self.levels):
-            laplace.append(self.images[level] - resize(self.images[level - 1],
-                                                       scale_factors=1 / self.size_ratios[level - 1],
-                                                       out_shape=self.images[level].shape))
-
         self.datasets.append(CropSet(image=self.images[0], crop_size=self.crop_size))
         for level in range(1, self.levels):
             self.datasets.append(SRCropSet(hr=self.images[level],
-                                           # self.datasets.append(SRCropSet(hr=laplace[level], # UNCOMMENT THIS WHEN USING LAPLACE (TODO REMOVE LINE)
                                            lr=self.images[level - 1],
                                            crop_size=self.crop_size))
 
@@ -157,12 +138,9 @@ class DiffusionPyramid(object):
             resized_lr_sample = resize(lr_sample, out_shape=sample_size_per_level[level])
 
             # In any of the other levels, noise is sampled and is conditioned on the sample from the previous layer
-            # laplace_sample = self.diffusion_models[level].sample(lr=resized_lr_sample) # UNCOMMENT THIS WHEN USING LAPLACE (TODO REMOVE LINE)
-            # sample = laplace_sample + resized_lr_sample  # UNCOMMENT THIS WHEN USING LAPLACE (TODO REMOVE LINE)
             sample = self.diffusion_models[level].sample(lr=resized_lr_sample)
 
             if debug:
-                # save_diffusion_sample(laplace_sample, f"{self.logger.log_dir}/level_{level}_laplace.png") # UNCOMMENT THIS WHEN USING LAPLACE (TODO REMOVE LINE)
                 save_diffusion_sample(sample, f"{self.logger.log_dir}/level_{level}_sample.png")
 
         return sample
