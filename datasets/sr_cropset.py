@@ -26,7 +26,7 @@ class SRCropSet(Dataset):
             transforms.RandomHorizontalFlip(),
             RandomScaleResize(),
             transforms.RandomCrop(self.crop_size, pad_if_needed=True, padding_mode='reflect'),
-            transforms.Lambda(lambda img: (img[:3, ] * 2) - 1)  # COMMENT THIS WHEN USING LAPLACE (TODO REMOVE COMMENT)
+            transforms.Lambda(lambda img: (img[:3, ] * 2) - 1)
         ])
 
         self.hr = hr
@@ -45,6 +45,5 @@ class SRCropSet(Dataset):
         random.seed(seed)
         torch.random.manual_seed(seed)
         lr_crop = self.transform(self.lr)
-        # lr_crop = transforms.Lambda(lambda img: (img[:3, ] * 2) - 1)(lr_crop) # UNCOMMENT THIS WHEN USING LAPLACE (TODO REMOVE LINE)
 
         return {'HR': hr_crop, 'LR': lr_crop}
