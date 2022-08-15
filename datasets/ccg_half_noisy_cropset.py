@@ -17,16 +17,19 @@ class CCGSemiNoisyCropSet(Dataset):
     in the normal part.
     This is used for crop-conditional generation experiments.
     """
-    def __init__(self, image, crop_size, noisy_chunk_size=None):
+    def __init__(self, image, crop_size, noisy_chunk_size=None, dataset_size=5000):
         """
         Args:
             image (torch.tensor): The image to generate crops from.
             crop_size (tuple(int, int)): The spatial dimensions of the crops to be taken.
             noisy_chunk_size (tuple(int, int)): The size of the pure noise part in the semi-noisy crop.
                                                 If None, half of the crop_size in each dimension is used.
+            dataset_size (int): The amount of images in a single epoch of training. For training datasets,
+                                this should be a high number to avoid overhead from pytorch_lightning.
         """
         self.crop_size = crop_size
         self.noisy_chunk_size = noisy_chunk_size or (self.crop_size[0] // 2, self.crop_size[1] // 2)
+        self.dataset_size = dataset_size
 
         self.transform = transforms.Compose([
             transforms.RandomHorizontalFlip(),
@@ -49,7 +52,7 @@ class CCGSemiNoisyCropSet(Dataset):
         return half_noisy_crop
 
     def __len__(self):
-        return 5000  # This is a high number to avoid overhead for pytorch_lightning
+        return self.dataset_size
 
     def __getitem__(self, item):
         img_crop = self.transform(self.img)

@@ -15,41 +15,84 @@ from metrics.sifid_score import get_sifid_scores
 from models.nextnet import NextNet
 
 
-def train_single_diffusion(cfg):
+def train_simple_diffusion(cfg):
     # Training hyperparameters
     training_steps = 100_000
 
-    # Create datasets and data loaders
-    # train_dataset = CCGSemiNoisyCropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size))
-    train_dataset = CropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size), dataset_size=5000)
+    # Create training datasets and data loaders
+    train_dataset = CropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size))
     train_loader = DataLoader(train_dataset, batch_size=1, num_workers=4, shuffle=True)
-    val_dataset = CropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size), dataset_size=10)
-    val_loader = DataLoader(val_dataset, batch_size=val_dataset.dataset_size, num_workers=4)
 
-    # Create model and trainer
-    # model = NextNet(in_channels=6, filters_per_layer=cfg.network_filters, depth=cfg.network_depth)
+    # Create evaluation datasets and data loaders
+    if cfg.eval_during_training:
+        val_dataset = CropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size), dataset_size=10)
+        val_loader = DataLoader(val_dataset, batch_size=val_dataset.dataset_size, num_workers=4)
+    else:
+        val_loader = None
+
+    # Create model
     model = NextNet(in_channels=3, filters_per_layer=cfg.network_filters, depth=cfg.network_depth)
-
-    # diffusion = ConditionalDiffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=False)
     diffusion = Diffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=False)
 
-    #model_callbacks = [pl.callbacks.ModelCheckpoint(filename=f'single-level-' + '{step}-{val_loss:.2f}', save_top_k=3, monitor='val_loss', mode='min'),
-    model_callbacks = [pl.callbacks.ModelCheckpoint(filename=f'single-level-' + '{step}'),
-#                       pl.callbacks.EarlyStopping(monitor='val_loss', patience=5, check_on_train_epoch_end=False),
-                       pl.callbacks.ModelSummary(max_depth=-1)]
+    model_callbacks = [pl.callbacks.ModelSummary(max_depth=-1)]
+    if cfg.eval_during_training:
+        model_callbacks.append(pl.callbacks.ModelCheckpoint(filename=f'single-level-' + '{step}-{val_loss:.2f}',
+                                                            save_top_k=3, monitor='val_loss', mode='min'))
+    else:
+        model_callbacks.append(pl.callbacks.ModelCheckpoint(filename=f'single-level-' + '{step}'))
 
     tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/", name=cfg.image_name)
-    trainer = pl.Trainer(max_steps=training_steps,# val_check_interval=0.2,
+    trainer = pl.Trainer(max_steps=training_steps,
+                         val_check_interval=0.2 if cfg.eval_during_training else 1.0,
                          gpus=1, auto_select_gpus=True,
                          logger=tb_logger, log_every_n_steps=10,
                          callbacks=model_callbacks)
 
     # Train model
-    trainer.fit(diffusion, train_loader)#, val_loader)
+    trainer.fit(diffusion, train_loader, val_loader)
+
+
+def train_ccg_diffusion(cfg):
+    # Training hyperparameters
+    training_steps = 100_000
+
+    # Create training datasets and data loaders
+    train_dataset = CCGSemiNoisyCropSet(image=imread(f'./images/{cfg.image_name}')[0],
+                                        crop_size=(cfg.crop_size, cfg.crop_size))
+    train_loader = DataLoader(train_dataset, batch_size=1, num_workers=4, shuffle=True)
+
+    # Create evaluation datasets and data loaders
+    if cfg.eval_during_training:
+        val_dataset = CCGSemiNoisyCropSet(image=imread(f'./images/{cfg.image_name}')[0],
+                                          crop_size=(cfg.crop_size, cfg.crop_size), dataset_size=10)
+        val_loader = DataLoader(val_dataset, batch_size=val_dataset.dataset_size, num_workers=4)
+    else:
+        val_loader = None
+
+    # Create model
+    model = NextNet(in_channels=6, filters_per_layer=cfg.network_filters, depth=cfg.network_depth)
+    diffusion = ConditionalDiffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=False)
+
+    model_callbacks = [pl.callbacks.ModelSummary(max_depth=-1)]
+    if cfg.eval_during_training:
+        model_callbacks.append(pl.callbacks.ModelCheckpoint(filename=f'single-level-' + '{step}-{val_loss:.2f}',
+                                                            save_top_k=3, monitor='val_loss', mode='min'))
+    else:
+        model_callbacks.append(pl.callbacks.ModelCheckpoint(filename=f'single-level-' + '{step}'))
+
+    tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/", name=cfg.image_name)
+    trainer = pl.Trainer(max_steps=training_steps,
+                         val_check_interval=0.2 if cfg.eval_during_training else 1.0,
+                         gpus=1, auto_select_gpus=True,
+                         logger=tb_logger, log_every_n_steps=10,
+                         callbacks=model_callbacks)
+
+    # Train model
+    trainer.fit(diffusion, train_loader, val_loader)
 
 
 def train_pyramid_diffusion(cfg):
-    training_steps_per_level = [50_000] + [1] * (cfg.pyramid_levels - 1)
+    training_steps_per_level = [50_000] * cfg.pyramid_levels
     sample_batch_size = 16
     image_path = f'./images/{cfg.image_name}'
 
@@ -82,10 +125,12 @@ def main():
 
     log_config(cfg)
 
-    if cfg.pyramid_levels is not None:
+    if cfg.pyramid_levels is not None and cfg.training_method == 'pyramid':
         train_pyramid_diffusion(cfg)
+    elif cfg.training_method == 'ccg':
+        train_ccg_diffusion(cfg)
     else:
-        train_single_diffusion(cfg)
+        train_simple_diffusion(cfg)
 
 
 if __name__ == '__main__':

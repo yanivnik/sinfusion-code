@@ -11,6 +11,8 @@ class CropSet(Dataset):
         Args:
             image (torch.tensor): The image to generate crops from.
             crop_size (tuple(int, int)): The spatial dimensions of the crops to be taken.
+            dataset_size (int): The amount of images in a single epoch of training. For training datasets,
+                                this should be a high number to avoid overhead from pytorch_lightning.
         """
         self.crop_size = crop_size
         self.dataset_size = dataset_size
@@ -24,7 +26,7 @@ class CropSet(Dataset):
         self.img = image
 
     def __len__(self):
-        return self.dataset_size  # This is a high number to avoid overhead for pytorch_lightning
+        return self.dataset_size
 
     def __getitem__(self, item):
         return self.transform(self.img)

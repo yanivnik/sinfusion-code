@@ -184,7 +184,7 @@ class Diffusion(LightningModule):
         self.step_counter += 1
         return loss
 
-    def validation_step2(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx):
         samples = self.sample(image_size=batch.shape[-2:], batch_size=1)
         val_loss = get_swd_scores(batch, samples)
         self.log('val_loss', val_loss)
