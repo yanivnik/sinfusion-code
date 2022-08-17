@@ -29,8 +29,9 @@ class Config:
     pyramid_levels = 5
     pyramid_coarsest_ratio = 0.135  # The size ratio between the image in the coarsest level and the original image
 
-    def __init__(self):
-        pass
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
 
 def log_config(cfg):
@@ -64,85 +65,63 @@ def parse_cmdline_args_to_config(cfg):
 
 
 # Pre-made configurations
-BALLOONS_PYRAMID_CONFIG = Config()
-BALLOONS_PYRAMID_CONFIG.image_name = 'balloons.png'
-BALLOONS_PYRAMID_CONFIG.pyramid_levels = 5
-BALLOONS_PYRAMID_CONFIG.diffusion_timesteps = 500
-BALLOONS_PYRAMID_CONFIG.network_depth = 9
-BALLOONS_PYRAMID_CONFIG.crop_size = 19
-BALLOONS_PYRAMID_CONFIG.pyramid_coarsest_ratio = 0.135
+BALLOONS_SIMPLE_CONFIG = Config(image_name='balloons.png',
+                                pyramid_levels=None,
+                                diffusion_timesteps=500,
+                                crop_size=185,
+                                network_depth=16,
+                                network_filters=64)
 
-BALLOONS_CCG_CONFIG = Config()
-BALLOONS_CCG_CONFIG.image_name = 'balloons.png'
-BALLOONS_CCG_CONFIG.pyramid_levels = None
-BALLOONS_CCG_CONFIG.pyramid_coarsest_ratio = None
-BALLOONS_CCG_CONFIG.diffusion_timesteps = 500
-BALLOONS_CCG_CONFIG.crop_size = 185
-BALLOONS_CCG_CONFIG.network_depth = 16
-BALLOONS_CCG_CONFIG.network_filters = 64
+LIGHTNING_SIMPLE_CONFIG = Config(image_name='lightning1.png',
+                                 pyramid_levels=None,
+                                 diffusion_timesteps=500,
+                                 crop_size=160,
+                                 network_depth=16,
+                                 network_filters=64)
 
-STARRY_NIGHT_CCG_CONFIG = Config()
-STARRY_NIGHT_CCG_CONFIG.image_name = 'starry_night.png'
-STARRY_NIGHT_CCG_CONFIG.pyramid_levels = None
-STARRY_NIGHT_CCG_CONFIG.pyramid_coarsest_ratio = None
-STARRY_NIGHT_CCG_CONFIG.diffusion_timesteps = 500
-STARRY_NIGHT_CCG_CONFIG.crop_size = 195
-STARRY_NIGHT_CCG_CONFIG.network_depth = 16
-STARRY_NIGHT_CCG_CONFIG.network_filters = 64
+STARRY_NIGHT_SIMPLE_CONFIG = Config(image_name='starry_night.png',
+                                    pyramid_levels=None,
+                                    diffusion_timesteps=500,
+                                    crop_size=195,
+                                    network_depth=16,
+                                    network_filters=64)
 
-BIRDS_CCG_CONFIG = Config()
-BIRDS_CCG_CONFIG.image_name = 'birds.png'
-BIRDS_CCG_CONFIG.pyramid_levels = None
-BIRDS_CCG_CONFIG.pyramid_coarsest_ratio = None
-BIRDS_CCG_CONFIG.diffusion_timesteps = 500
-BIRDS_CCG_CONFIG.crop_size = 128
-BIRDS_CCG_CONFIG.network_depth = 9
-BIRDS_CCG_CONFIG.network_filters = [32, 64, 64, 128, 256, 128, 64, 64, 32] # TODO YANIV: LOOK INTO CHANGING NUMBER OF FILTERS PER CONVNEXT BLOCK
+BIRDS_CCG_CONFIG = Config(image_name='birds.png',
+                          training_method='ccg',
+                          pyramid_levels=None,
+                          diffusion_timesteps=500,
+                          crop_size=128,
+                          network_depth=9,
+                          network_filters=[32, 64, 64, 128, 256, 128, 64, 64, 32]) # TODO YANIV: LOOK INTO CHANGING NUMBER OF FILTERS PER CONVNEXT BLOCK
 
-LIGHTNING_CCG_CONFIG = Config()
-LIGHTNING_CCG_CONFIG.image_name = 'lightning1.png'
-LIGHTNING_CCG_CONFIG.pyramid_levels = None
-LIGHTNING_CCG_CONFIG.pyramid_coarsest_ratio = None
-LIGHTNING_CCG_CONFIG.diffusion_timesteps = 500
-LIGHTNING_CCG_CONFIG.crop_size = 128
-LIGHTNING_CCG_CONFIG.network_depth = 9
-LIGHTNING_CCG_CONFIG.network_filters = [32, 64, 64, 128, 256, 128, 64, 64, 32] # TODO YANIV: LOOK INTO CHANGING NUMBER OF FILTERS PER CONVNEXT BLOCK
+STONE_CCG_CONFIG = Config(image_name='stone.png',
+                          training_method='ccg',
+                          pyramid_levels=None,
+                          diffusion_timesteps=500,
+                          crop_size=128,
+                          network_depth=9,
+                          network_filters=[32, 64, 64, 128, 256, 128, 64, 64, 32]) # TODO YANIV: LOOK INTO CHANGING NUMBER OF FILTERS PER CONVNEXT BLOCK
 
-STONE_CCG_CONFIG = Config()
-STONE_CCG_CONFIG.image_name = 'stone.png'
-STONE_CCG_CONFIG.pyramid_levels = None
-STONE_CCG_CONFIG.pyramid_coarsest_ratio = None
-STONE_CCG_CONFIG.diffusion_timesteps = 500
-STONE_CCG_CONFIG.crop_size = 128
-STONE_CCG_CONFIG.network_depth = 9
-STONE_CCG_CONFIG.network_filters = [32, 64, 64, 128, 256, 128, 64, 64, 32] # TODO YANIV: LOOK INTO CHANGING NUMBER OF FILTERS PER CONVNEXT BLOCK
+SEASCAPE_CCG_CONFIG = Config(image_name='seascape.png',
+                             training_method='ccg',
+                             pyramid_levels=None,
+                             diffusion_timesteps=500,
+                             crop_size=128,
+                             network_depth=9,
+                             network_filters=[32, 64, 64, 128, 256, 128, 64, 64, 32]) # TODO YANIV: LOOK INTO CHANGING NUMBER OF FILTERS PER CONVNEXT BLOCK
 
-SEASCAPE_CCG_CONFIG = Config()
-SEASCAPE_CCG_CONFIG.image_name = 'seascape.png'
-SEASCAPE_CCG_CONFIG.pyramid_levels = None
-SEASCAPE_CCG_CONFIG.pyramid_coarsest_ratio = None
-SEASCAPE_CCG_CONFIG.diffusion_timesteps = 500
-SEASCAPE_CCG_CONFIG.crop_size = 128
-SEASCAPE_CCG_CONFIG.network_depth = 9
-SEASCAPE_CCG_CONFIG.network_filters = [32, 64, 64, 128, 256, 128, 64, 64, 32] # TODO YANIV: LOOK INTO CHANGING NUMBER OF FILTERS PER CONVNEXT BLOCK
+BALLOONS_PYRAMID_CONFIG = Config(image_name='balloons.png',
+                                 training_method='pyramid',
+                                 pyramid_levels=5,
+                                 pyramid_coarsest_ratio=0.135,
+                                 diffusion_timesteps=500,
+                                 crop_size=19,
+                                 network_depth=9)
 
-MOUNTAINS3_PYRAMID_CONFIG = Config()
-MOUNTAINS3_PYRAMID_CONFIG.image_name = 'mountains3.png'
-MOUNTAINS3_PYRAMID_CONFIG.pyramid_levels = 5
-MOUNTAINS3_PYRAMID_CONFIG.diffusion_timesteps = 500
-MOUNTAINS3_PYRAMID_CONFIG.crop_size = 19
-MOUNTAINS3_PYRAMID_CONFIG.pyramid_coarsest_ratio = 0.141
-
-LIGHTNING_PYRAMID_CONFIG = Config()
-LIGHTNING_PYRAMID_CONFIG.image_name = 'lightning1.png'
-LIGHTNING_PYRAMID_CONFIG.pyramid_levels = 5
-LIGHTNING_PYRAMID_CONFIG.diffusion_timesteps = 500
-LIGHTNING_PYRAMID_CONFIG.crop_size = 19
-LIGHTNING_PYRAMID_CONFIG.pyramid_coarsest_ratio = 0.141
-
-STARRYNIGHT_PYRAMID_CONFIG = Config()
-STARRYNIGHT_PYRAMID_CONFIG.image_name = 'starry_night.png'
-STARRYNIGHT_PYRAMID_CONFIG.pyramid_levels = 5
-STARRYNIGHT_PYRAMID_CONFIG.diffusion_timesteps = 500
-STARRYNIGHT_PYRAMID_CONFIG.crop_size = 19
-STARRYNIGHT_PYRAMID_CONFIG.pyramid_coarsest_ratio = 0.135
+MOUNTAINS3_PYRAMID_CONFIG = Config(image_name='mountains3.png',
+                                   training_method='pyramid',
+                                   pyramid_levels=5,
+                                   pyramid_coarsest_ratio=0.141,
+                                   diffusion_timesteps=500,
+                                   crop_size=19,
+                                   network_depth=9)
