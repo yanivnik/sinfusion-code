@@ -17,17 +17,18 @@ from models.nextnet import NextNet
 
 def train_simple_diffusion(cfg):
     # Training hyperparameters
-    training_steps = 200_000
+    batch_size = 1
+    training_steps = 200_000 // batch_size
 
     # Create training datasets and data loaders
     train_dataset = CropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size))
-    train_loader = DataLoader(train_dataset, batch_size=1, num_workers=4, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, num_workers=4, shuffle=True)
 
     # Create evaluation datasets and data loaders
     val_loader = None
     if cfg.eval_during_training:
         val_dataset = CropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=(cfg.crop_size, cfg.crop_size), dataset_size=10)
-        val_loader = DataLoader(val_dataset, batch_size=val_dataset.dataset_size, num_workers=4)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, num_workers=4)
 
     # Create model
     model = NextNet(in_channels=3, filters_per_layer=cfg.network_filters, depth=cfg.network_depth)
@@ -35,10 +36,10 @@ def train_simple_diffusion(cfg):
 
     model_callbacks = [pl.callbacks.ModelSummary(max_depth=-1)]
     if cfg.eval_during_training:
-        model_callbacks.append(pl.callbacks.ModelCheckpoint(filename=f'single-level-' + '{step}-{val_loss:.2f}',
+        model_callbacks.append(pl.callbacks.ModelCheckpoint(filename='single-level-{step}-{val_loss:.2f}', save_last=True,
                                                             save_top_k=3, monitor='val_loss', mode='min'))
     else:
-        model_callbacks.append(pl.callbacks.ModelCheckpoint(filename=f'single-level-' + '{step}'))
+        model_callbacks.append(pl.callbacks.ModelCheckpoint(filename='single-level-{step}', save_last=True))
 
     tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/", name=cfg.image_name)
     trainer = pl.Trainer(max_steps=training_steps,
@@ -115,7 +116,7 @@ def train_pyramid_diffusion(cfg):
 
 
 def main():
-    cfg = LIGHTNING_SIMPLE_CONFIG
+    cfg = MOUNTAINS2_SIMPLE_SMALL_CROPS_CONFIG
     cfg = parse_cmdline_args_to_config(cfg)
 
     if 'CUDA_VISIBLE_DEVICES' not in os.environ:
