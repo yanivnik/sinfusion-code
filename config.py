@@ -72,6 +72,34 @@ BALLOONS_SIMPLE_CONFIG = Config(image_name='balloons.png',
                                 network_depth=16,
                                 network_filters=64)
 
+BALLOONS_SIMPLE_VS_PRETRAIN_CONFIG = Config(image_name='balloons_scale=0.729.png',
+                                pyramid_levels=None,
+                                diffusion_timesteps=500,
+                                crop_size=128,
+                                network_depth=16,
+                                network_filters=64)
+
+BALLOONS_SIMPLE_SMALL_CROPS_CONFIG = Config(image_name='balloons.png',
+                                            pyramid_levels=None,
+                                            diffusion_timesteps=500,
+                                            crop_size=64,
+                                            network_depth=11,
+                                            network_filters=[32, 64, 64, 128, 128, 256, 128, 128, 64, 64, 32])
+
+MOUNTAINS1_SIMPLE_SMALL_CROPS_CONFIG = Config(image_name='mountains1.jpg',
+                                              pyramid_levels=None,
+                                              diffusion_timesteps=500,
+                                              crop_size=64,
+                                              network_depth=11,
+                                              network_filters=[32, 64, 64, 128, 128, 256, 128, 128, 64, 64, 32])
+
+MOUNTAINS2_SIMPLE_SMALL_CROPS_CONFIG = Config(image_name='mountains2.png',
+                                              pyramid_levels=None,
+                                              diffusion_timesteps=500,
+                                              crop_size=64,
+                                              network_depth=11,
+                                              network_filters=[32, 64, 64, 128, 128, 256, 128, 128, 64, 64, 32])
+
 LIGHTNING_SIMPLE_CONFIG = Config(image_name='lightning1.png',
                                  pyramid_levels=None,
                                  diffusion_timesteps=500,
