@@ -191,5 +191,5 @@ class Diffusion(LightningModule):
 
     def configure_optimizers(self):
         optim = torch.optim.Adam(self.parameters(), lr=self.initial_lr)
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optim, milestones=[100_000], gamma=0.1, verbose=True)
-        return {'optimizer': optim, 'scheduler': scheduler}
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optim, milestones=[20], gamma=0.1, verbose=True)
+        return [optim], [scheduler]
