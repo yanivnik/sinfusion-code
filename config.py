@@ -23,10 +23,9 @@ class Config:
 
     # Optimization configuration options
     initial_lr = 0.0002
-    lr_schedule = 'single'  # Learning rate scheduling strategy. TODO IMPLEMENT USAGE.
 
     # Generation pyramid configuration options
-    pyramid_levels = 5
+    pyramid_levels = None
     pyramid_coarsest_ratio = 0.135  # The size ratio between the image in the coarsest level and the original image
 
     def __init__(self, **kwargs):
@@ -48,7 +47,6 @@ def parse_cmdline_args_to_config(cfg):
     parser.add_argument('--pyramid_coarsest_ratio', type=float, help='Size ratio between the coarsest image in the pyramid and the original image')
     parser.add_argument('--diffusion_timesteps', type=int, help='Amount of diffusion timesteps to perform per level')
     parser.add_argument('--initial_lr', type=float, help='Initial value of LR')
-    # parser.add_argument('--lr_schedule', type=str, choices=['single', 'multi-level', 'logarithmic'])
     parser.add_argument('--network_depth', type=int, help='Depth of the backbone network (amount of blocks)')
     parser.add_argument('--network_filters', type=int, help='Amount of filters per convolutional level in the backbone networks')
     parser.add_argument('--crop_size', type=int, help='Size of crops to train the backbone models on')
@@ -65,20 +63,50 @@ def parse_cmdline_args_to_config(cfg):
 
 
 # Pre-made configurations
+
+### Configurations for diverse generation, retargeting, from sketch, etc ###
 BALLOONS_SIMPLE_CONFIG = Config(image_name='balloons.png',
-                                pyramid_levels=None,
-                                diffusion_timesteps=500,
                                 crop_size=185,
                                 network_depth=16,
                                 network_filters=64)
 
 BALLOONS_SIMPLE_VS_PRETRAIN_CONFIG = Config(image_name='balloons_scale=0.729.png',
-                                pyramid_levels=None,
-                                diffusion_timesteps=500,
-                                crop_size=128,
+                                            crop_size=128,
+                                            network_depth=16,
+                                            network_filters=64)
+
+LIGHTNING_SIMPLE_CONFIG = Config(image_name='lightning1.png',
+                                 crop_size=160,
+                                 network_depth=16,
+                                 network_filters=64)
+
+STARRY_NIGHT_SIMPLE_CONFIG = Config(image_name='starry_night.png',
+                                    crop_size=195,
+                                    network_depth=16,
+                                    network_filters=64)
+
+MOUNTAINS3_SIMPLE_CONFIG = Config(image_name='mountains3.png',
+                                  crop_size=168,
+                                  network_depth=16,
+                                  network_filters=64)
+
+PENGUINS_SIMPLE_CONFIG = Config(image_name='penguins.png',
+                                crop_size=114,
                                 network_depth=16,
                                 network_filters=64)
 
+DOLPHINS_SIMPLE_CONFIG = Config(image_name='Dolphins.jpg',
+                                crop_size=165,
+                                network_depth=16,
+                                network_filters=64)
+
+BIRDS3_SIMPLE_CONFIG = Config(image_name='Birds3.jpg',
+                              crop_size=165,
+                              network_depth=16,
+                              network_filters=64)
+
+
+### Configurations for visual summary ###
 BALLOONS_SIMPLE_SMALL_CROPS_CONFIG = Config(image_name='balloons.png',
                                             pyramid_levels=None,
                                             diffusion_timesteps=500,
@@ -100,19 +128,7 @@ MOUNTAINS2_SIMPLE_SMALL_CROPS_CONFIG = Config(image_name='mountains2.png',
                                               network_depth=11,
                                               network_filters=[32, 64, 64, 128, 128, 256, 128, 128, 64, 64, 32])
 
-LIGHTNING_SIMPLE_CONFIG = Config(image_name='lightning1.png',
-                                 pyramid_levels=None,
-                                 diffusion_timesteps=500,
-                                 crop_size=160,
-                                 network_depth=16,
-                                 network_filters=64)
-
-STARRY_NIGHT_SIMPLE_CONFIG = Config(image_name='starry_night.png',
-                                    pyramid_levels=None,
-                                    diffusion_timesteps=500,
-                                    crop_size=195,
-                                    network_depth=16,
-                                    network_filters=64)
+### Configurations for inpainting ###
 
 BIRDS_CCG_CONFIG = Config(image_name='birds.png',
                           training_method='ccg',
@@ -137,19 +153,3 @@ SEASCAPE_CCG_CONFIG = Config(image_name='seascape.png',
                              crop_size=128,
                              network_depth=9,
                              network_filters=[32, 64, 64, 128, 256, 128, 64, 64, 32]) # TODO YANIV: LOOK INTO CHANGING NUMBER OF FILTERS PER CONVNEXT BLOCK
-
-BALLOONS_PYRAMID_CONFIG = Config(image_name='balloons.png',
-                                 training_method='pyramid',
-                                 pyramid_levels=5,
-                                 pyramid_coarsest_ratio=0.135,
-                                 diffusion_timesteps=500,
-                                 crop_size=19,
-                                 network_depth=9)
-
-MOUNTAINS3_PYRAMID_CONFIG = Config(image_name='mountains3.png',
-                                   training_method='pyramid',
-                                   pyramid_levels=5,
-                                   pyramid_coarsest_ratio=0.141,
-                                   diffusion_timesteps=500,
-                                   crop_size=19,
-                                   network_depth=9)
