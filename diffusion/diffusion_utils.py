@@ -45,18 +45,5 @@ def save_diffusion_sample(sample, output_path=None, wandb_logger=None):
         wandb_logger.log_image(key="samples", images=list(sample))
 
 
-def get_pyramid_parameter_as_list(param, pyramid_levels):
-    """
-    Convert param to be a list of length pyramid_levels.
-    If param is already a list (or any sequence) then make sure it is in the correct length.
-    """
-    if isinstance(param, Iterable):
-        assert len(param) == pyramid_levels
-        return param
-    else:
-        # Use the same parameter for all levels
-        return [param] * pyramid_levels
-
-
 def to_torch(tensor):
     return torch.tensor(tensor, dtype=torch.float32)

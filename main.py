@@ -9,9 +9,6 @@ from datasets.ccg_half_noisy_cropset import CCGSemiNoisyCropSet
 from datasets.cropset import CropSet
 from diffusion.conditional_diffusion import ConditionalDiffusion
 from diffusion.diffusion import Diffusion
-from diffusion.diffusion_pyramid import DiffusionPyramid
-from diffusion.diffusion_utils import save_diffusion_sample
-from metrics.sifid_score import get_sifid_scores
 from models.nextnet import NextNet
 
 
@@ -90,31 +87,6 @@ def train_ccg_diffusion(cfg):
     trainer.fit(diffusion, train_loader, val_loader)
 
 
-def train_pyramid_diffusion(cfg):
-    training_steps_per_level = [50_000] * cfg.pyramid_levels
-    sample_batch_size = 16
-    image_path = f'./images/{cfg.image_name}'
-
-    wandb_logger = pl.loggers.WandbLogger(project=cfg.project_name)
-    tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/pyramid/", name=cfg.image_name)
-
-    print('Training generation pyramid')
-    pyramid = DiffusionPyramid(image_path,
-                               levels=cfg.pyramid_levels,
-                               size_ratios=cfg.pyramid_coarsest_ratio ** (1.0 / (cfg.pyramid_levels - 1)),
-                               timesteps=cfg.diffusion_timesteps,
-                               crop_size=cfg.crop_size,
-                               network_filters=cfg.network_filters,
-                               network_depth=cfg.network_depth,
-                               logger=tb_logger)  # TODO HANDLE WANDB
-    pyramid.train(training_steps_per_level, log_progress=cfg.log_progress)
-
-    print('Sampling generated images from pyramid')
-    samples = pyramid.sample((186, 248), sample_batch_size, debug=True)
-    save_diffusion_sample(samples, f"{tb_logger.log_dir}/sample_.png", wandb_logger)
-    wandb_logger.log_metrics({'SIFID': get_sifid_scores(imread(image_path), samples).mean()})
-
-
 def main():
     cfg = MOUNTAINS2_SIMPLE_SMALL_CROPS_CONFIG
     cfg = parse_cmdline_args_to_config(cfg)
@@ -124,9 +96,7 @@ def main():
 
     log_config(cfg)
 
-    if cfg.pyramid_levels is not None and cfg.training_method == 'pyramid':
-        train_pyramid_diffusion(cfg)
-    elif cfg.training_method == 'ccg':
+    if cfg.training_method == 'ccg':
         train_ccg_diffusion(cfg)
     else:
         train_simple_diffusion(cfg)
