@@ -38,13 +38,14 @@ def log_config(cfg):
 def parse_cmdline_args_to_config(cfg):
     parser = argparse.ArgumentParser(description='Command line configuration')
     parser.add_argument('--image_name', type=str, help='The image to train the model on')
-    parser.add_argument('--training_method', type=str, choices=['simple', 'ccg'], help='The type of training mechanism')
+    parser.add_argument('--training_method', type=str, choices=['simple', 'ccg', 'video'], help='The type of training mechanism')
     parser.add_argument('--diffusion_timesteps', type=int, help='Amount of diffusion timesteps to perform per level')
     parser.add_argument('--initial_lr', type=float, help='Initial value of LR')
     parser.add_argument('--network_depth', type=int, help='Depth of the backbone network (amount of blocks)')
     parser.add_argument('--network_filters', type=int, help='Amount of filters per convolutional level in the backbone networks')
     parser.add_argument('--crop_size', type=int, help='Size of crops to train the backbone models on')
     parser.add_argument('--no_progress', dest='log_progress', action='store_false')
+    parser.add_argument('--available_gpus', type=str, help='The gpu indexes to run on, in CUDA format (0,1,2...)')
 
     args = parser.parse_args(sys.argv[1:])
 
@@ -69,6 +70,18 @@ BALLOONS_SIMPLE_VS_PRETRAIN_CONFIG = Config(image_name='balloons_scale=0.729.png
                                             network_depth=16,
                                             network_filters=64)
 
+MOUNTAINS3_SIMPLE_VS_PRETRAIN_CONFIG = Config(image_name='mountains3_scale=0.91_0.52.png',
+                                            crop_size=135,
+                                            network_depth=16,
+                                            network_filters=64,
+                                            available_gpus='0')
+
+TREE_SIMPLE_VS_PRETRAIN_CONFIG = Config(image_name='tree_scale=0.52_0.52.png',
+                                        crop_size=125,
+                                        network_depth=16,
+                                        network_filters=64,
+                                        available_gpus='2')
+
 LIGHTNING_SIMPLE_CONFIG = Config(image_name='lightning1.png',
                                  crop_size=160,
                                  network_depth=16,
@@ -89,16 +102,50 @@ PENGUINS_SIMPLE_CONFIG = Config(image_name='penguins.png',
                                 network_depth=16,
                                 network_filters=64)
 
-DOLPHINS_SIMPLE_CONFIG = Config(image_name='Dolphins.jpg',
+DOLPHINS_SIMPLE_CONFIG = Config(image_name='dolphins.jpg',
                                 crop_size=165,
                                 network_depth=16,
                                 network_filters=64)
 
-BIRDS3_SIMPLE_CONFIG = Config(image_name='Birds3.jpg',
-                              crop_size=165,
+BIRDS3_SIMPLE_CONFIG = Config(image_name='birds_3.jpg',
+                              crop_size=(165, 230),
                               network_depth=16,
                               network_filters=64)
 
+STONE_SIMPLE_CONFIG = Config(image_name='stone.png',
+                             crop_size=(160, 230),
+                             network_depth=16,
+                             network_filters=64)
+
+BIRDS3_SIMPLE_VS_PRETRAIN_CONFIG = Config(image_name='birds_3_scale=0.96_0.64.png',
+                                        crop_size=158,
+                                        network_depth=16,
+                                        network_filters=64)
+
+NIEGHBOURHOOD_SIMPLE_CONFIG = Config(image_name='neighbourhood_small.png',
+                                     crop_size=175,
+                                     network_depth=16,
+                                     network_filters=64)
+
+
+### Configurations for video generation ###
+BALLOONS2_VIDEO_CONFIG = Config(image_name='air_balloons',
+                                training_method='video',
+                                crop_size=135,#(135, 130),
+                                network_depth=16,
+                                network_filters=64, available_gpus='2')
+
+TORNADO_VIDEO_CONFIG = Config(image_name='tornado',
+                              training_method='video',
+                              crop_size=131,
+                              network_depth=16,
+                              network_filters=64, available_gpus='2')
+
+DUTCH_VIDEO_CONFIG = Config(image_name='dutch2',
+                            training_method='video',
+                            crop_size=(131, 180),
+                            network_depth=16,
+                            network_filters=64, available_gpus='0')
 
 ### Configurations for visual summary ###
 BALLOONS_SIMPLE_SMALL_CROPS_CONFIG = Config(image_name='balloons.png',
@@ -116,22 +163,43 @@ MOUNTAINS2_SIMPLE_SMALL_CROPS_CONFIG = Config(image_name='mountains2.png',
                                               network_depth=11,
                                               network_filters=[32, 64, 64, 128, 128, 256, 128, 128, 64, 64, 32])
 
+MOUNTAINS3_SIMPLE_SMALL_CROPS_CONFIG = Config(image_name='mountains3.png',
+                                            crop_size=64,
+                                            network_depth=11,
+                                            network_filters=[32, 64, 64, 128, 128, 256, 128, 128, 64, 64, 32])
+
+TREE_SIMPLE_SMALL_CROPS_CONFIG = Config(image_name='tree.png',
+                                            crop_size=64,
+                                            network_depth=11,
+                                            network_filters=[32, 64, 64, 128, 128, 256, 128, 128, 64, 64, 32])
+
+BIRDS3_SIMPLE_SMALL_CROPS_CONFIG = Config(image_name='birds_3.jpg',
+                                          crop_size=64,
+                                          network_depth=11,
+                                          network_filters=[32, 64, 64, 128, 128, 256, 128, 128, 64, 64, 32])
+
 ### Configurations for inpainting ###
 
-BIRDS_CCG_CONFIG = Config(image_name='birds.png',
+FRUIT_CCG_CONFIG = Config(image_name='fruit.png',
                           training_method='ccg',
                           crop_size=128,
-                          network_depth=9,
-                          network_filters=[32, 64, 64, 128, 256, 128, 64, 64, 32]) # TODO YANIV: LOOK INTO CHANGING NUMBER OF FILTERS PER CONVNEXT BLOCK
+                          network_depth=8,
+                          network_filters=64)
 
 STONE_CCG_CONFIG = Config(image_name='stone.png',
                           training_method='ccg',
                           crop_size=128,
-                          network_depth=9,
-                          network_filters=[32, 64, 64, 128, 256, 128, 64, 64, 32]) # TODO YANIV: LOOK INTO CHANGING NUMBER OF FILTERS PER CONVNEXT BLOCK
+                          network_depth=8,
+                          network_filters=64)
+
+STARRY_NIGHT_CCG_CONFIG = Config(image_name='starry_night.png',
+                                 training_method='ccg',
+                                 crop_size=128,
+                                 network_depth=8,
+                                 network_filters=64)
 
 SEASCAPE_CCG_CONFIG = Config(image_name='seascape.png',
                              training_method='ccg',
                              crop_size=128,
-                             network_depth=9,
-                             network_filters=[32, 64, 64, 128, 256, 128, 64, 64, 32]) # TODO YANIV: LOOK INTO CHANGING NUMBER OF FILTERS PER CONVNEXT BLOCK
+                             network_depth=8,
+                             network_filters=64)
