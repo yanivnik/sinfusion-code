@@ -114,12 +114,12 @@ class PreNorm(nn.Module):
 class ConvNextBlock(nn.Module):
     """ https://arxiv.org/abs/2201.03545 """
 
-    def __init__(self, dim, dim_out, *, time_emb_dim=None, mult=3, norm=True):
+    def __init__(self, dim, dim_out, *, emb_dim=None, mult=3, norm=True):
         super().__init__()
         self.mlp = nn.Sequential(
             nn.GELU(),
-            nn.Linear(time_emb_dim, dim)
-        ) if exists(time_emb_dim) else None
+            nn.Linear(emb_dim, dim)
+        ) if exists(emb_dim) else None
 
         self.ds_conv = nn.Conv2d(dim, dim, 7, padding=3, groups=dim)
 
@@ -132,12 +132,12 @@ class ConvNextBlock(nn.Module):
 
         self.res_conv = nn.Conv2d(dim, dim_out, 1) if dim != dim_out else nn.Identity()
 
-    def forward(self, x, time_emb=None):
+    def forward(self, x, emb=None):
         h = self.ds_conv(x)
 
         if exists(self.mlp):
-            assert exists(time_emb), 'time emb must be passed in'
-            condition = self.mlp(time_emb)
+            assert exists(emb), 'time (and possibly frame) emb must be passed in'
+            condition = self.mlp(emb)
             h = h + rearrange(condition, 'b c -> b c 1 1')
 
         h = self.net(h)

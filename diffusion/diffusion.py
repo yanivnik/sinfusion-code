@@ -72,10 +72,14 @@ class Diffusion(LightningModule):
         posterior_log_variance_clipped = self.posterior_log_variance_clipped[t]
         return posterior_mean, posterior_variance, posterior_log_variance_clipped
 
-    def p_mean_variance(self, x, t, clip_denoised):
+    def p_mean_variance(self, x, t, frame, clip_denoised):
         batch_size = x.shape[0]
         t_tensor = torch.full((batch_size,), t, dtype=torch.int64, device=self.device)
-        x_recon = self.predict_start_from_noise(x, t=t, noise=self.model(x, t_tensor))
+        if frame is not None:
+            frame_tensor = torch.full((batch_size,), frame, dtype=torch.int64, device=self.device)
+        else:
+            frame_tensor = None
+        x_recon = self.predict_start_from_noise(x, t=t, noise=self.model(x, t_tensor, frame_tensor))
 
         if clip_denoised:
             x_recon.clamp_(-1., 1.)
@@ -84,20 +88,20 @@ class Diffusion(LightningModule):
         return model_mean, posterior_variance, posterior_log_variance
 
     @torch.no_grad()
-    def p_sample(self, x, t, clip_denoised=True):
-        model_mean, _, model_log_variance = self.p_mean_variance(x=x, t=t, clip_denoised=clip_denoised)
+    def p_sample(self, x, t, frame=None, clip_denoised=True):
+        model_mean, _, model_log_variance = self.p_mean_variance(x=x, t=t, frame=frame, clip_denoised=clip_denoised)
         noise = torch.randn_like(x) if t > 0 else torch.zeros_like(x)  # no noise when t == 0
         return model_mean + noise * (0.5 * model_log_variance).exp()
 
     @torch.no_grad()
-    def sample(self, image_size=(32, 32), batch_size=16, custom_initial_img=None, custom_timesteps=None):
+    def sample(self, image_size=(32, 32), batch_size=16, custom_initial_img=None, custom_timesteps=None, frame=None):
         image_size = image_size if isinstance(image_size, tuple) else (image_size, image_size)
         sample_shape = (batch_size, self.channels, image_size[0], image_size[1])
 
         timesteps = custom_timesteps or self.num_timesteps
         img = custom_initial_img if custom_initial_img is not None else torch.randn(sample_shape, device=self.device)
         for t in reversed(range(0, timesteps)):
-            img = self.p_sample(img, t)
+            img = self.p_sample(img, t, frame)
         return img
 
     @torch.no_grad()
@@ -156,6 +160,8 @@ class Diffusion(LightningModule):
         return self.sqrt_alphas_hat[t] * x_start + self.sqrt_one_minus_alphas_hat[t] * noise
 
     def forward(self, x, *args, **kwargs):
+        frame_tensor = x.get('FRAME')
+        x = x.get('IMG')
         batch_size = x.shape[0]
 
         # Sample t uniformly
@@ -169,7 +175,7 @@ class Diffusion(LightningModule):
 
         # Attempt to reconstruct white noise that was used in forward process
         t_tensor = torch.full((batch_size, ), t, dtype=torch.int64, device=self.device)
-        noise_recon = self.model(x_noisy, t_tensor)
+        noise_recon = self.model(x_noisy, t_tensor, frame_tensor)
 
         return F.mse_loss(noise, noise_recon)
 
@@ -191,5 +197,7 @@ class Diffusion(LightningModule):
 
     def configure_optimizers(self):
         optim = torch.optim.Adam(self.parameters(), lr=self.initial_lr)
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optim, milestones=[20], gamma=0.1, verbose=True)
+        # TODO YANIV DONT COMMIT THIS LIKE THIS - MAKE THE LR FOR VIDEO BETTER
+        #scheduler = torch.optim.lr_scheduler.MultiStepLR(optim, milestones=[20], gamma=0.1, verbose=True)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optim, milestones=[40], gamma=0.1, verbose=True)
         return [optim], [scheduler]
