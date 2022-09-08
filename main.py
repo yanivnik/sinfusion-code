@@ -9,6 +9,7 @@ from common_utils.ben_image import imread
 from config import *
 from datasets.ccg_half_noisy_cropset import CCGSemiNoisyCropSet
 from datasets.cropset import CropSet
+from datasets.frameset import FrameSet
 from diffusion.conditional_diffusion import ConditionalDiffusion
 from diffusion.diffusion import Diffusion
 from models.nextnet import NextNet
@@ -96,18 +97,20 @@ def train_video_diffusion(cfg):
 
     # Create training datasets and data loaders
     images = []
-    for frame in range(1, len(os.listdir(f'./images/video/{cfg.image_name}'))):
+    for frame in range(1, len(os.listdir(f'./images/video/{cfg.image_name}')) + 1):
         images.append(imread(f'./images/video/{cfg.image_name}/{frame}.png'))
     images = torch.cat(images, dim=0)
-    print(images.shape[0])
 
     crop_size = cfg.crop_size if isinstance(cfg.crop_size, tuple) else (cfg.crop_size, cfg.crop_size)
-    train_dataset = CropSet(image=images, crop_size=crop_size)
+    # train_dataset = CropSet(image=images, crop_size=crop_size)
+    train_dataset = FrameSet(frames=images, crop_size=crop_size)
     train_loader = DataLoader(train_dataset, batch_size=1, num_workers=4, shuffle=True)
 
     # Create model
-    model = NextNet(in_channels=3, filters_per_layer=cfg.network_filters, depth=cfg.network_depth, frame_conditioned=True)
-    diffusion = Diffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=False)
+    # model = NextNet(in_channels=3, filters_per_layer=cfg.network_filters, depth=cfg.network_depth, frame_conditioned=True)
+    # diffusion = Diffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=False)
+    model = NextNet(in_channels=6, filters_per_layer=cfg.network_filters, depth=cfg.network_depth, frame_conditioned=True)
+    diffusion = ConditionalDiffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=False)
 
     model_callbacks = [pl.callbacks.ModelSummary(max_depth=-1),
                        pl.callbacks.ModelCheckpoint(filename='single-level-{step}', save_last=True)]

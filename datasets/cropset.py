@@ -1,7 +1,5 @@
 import random
-from builtins import range
 
-import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 
@@ -22,7 +20,7 @@ class CropSet(Dataset):
         self.dataset_size = dataset_size
 
         self.transform = transforms.Compose([
-            #transforms.RandomHorizontalFlip(),
+            #transforms.RandomHorizontalFlip(), # TODO EITHER REMOVE OR MAKE THIS A PARAMETER
             transforms.RandomCrop(self.crop_size, pad_if_needed=False),
             transforms.Lambda(lambda img: (img[:3, ] * 2) - 1)
         ])

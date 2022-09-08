@@ -3,12 +3,12 @@ import os
 import numpy as np
 import torch
 import torch.nn.functional as F
-import torchvision
 from pytorch_lightning import LightningModule
 
-from common_utils.resize_right import resize
 from diffusion.diffusion_utils import cosine_noise_schedule, save_diffusion_sample, to_torch
 
+
+# TODO UNIFY THE TWO DIFFUSION CLASSES
 
 class ConditionalDiffusion(LightningModule):
     def __init__(self, model, channels=3, timesteps=1000,
@@ -73,31 +73,36 @@ class ConditionalDiffusion(LightningModule):
         posterior_log_variance_clipped = self.posterior_log_variance_clipped[t]
         return posterior_mean, posterior_log_variance_clipped
 
-    def p_mean_variance(self, x, t, clip_denoised, condition_x=None):
+    def p_mean_variance(self, x, t, clip_denoised, condition_x=None, frame=None):
         batch_size = x.shape[0]
         noise_level = torch.FloatTensor(
             [self.sqrt_alphas_hat_prev[t + 1]]).repeat(batch_size, 1).view((batch_size,)).to(x.device)
+
+        if frame is not None:
+            frame_tensor = torch.full((batch_size,), frame, dtype=torch.int64, device=self.device)
+        else:
+            frame_tensor = None
+
         x_recon = self.predict_start_from_noise(
-            x, t=t, noise=self.model(torch.cat([condition_x, x], dim=1), noise_level))
+            x, t=t, noise=self.model(torch.cat([condition_x, x], dim=1), noise_level, frame_tensor))
 
         if clip_denoised:
             x_recon.clamp_(-1., 1.)
 
-        model_mean, posterior_log_variance = self.q_posterior(
-            x_start=x_recon, x_t=x, t=t)
+        model_mean, posterior_log_variance = self.q_posterior(x_start=x_recon, x_t=x, t=t)
         return model_mean, posterior_log_variance
 
-    def p_sample(self, x, t, clip_denoised=True, condition_x=None):
+    def p_sample(self, x, t, clip_denoised=True, condition_x=None, frame=None):
         model_mean, model_log_variance = self.p_mean_variance(
-            x=x, t=t, clip_denoised=clip_denoised, condition_x=condition_x)
+            x=x, t=t, clip_denoised=clip_denoised, condition_x=condition_x, frame=frame)
         noise = torch.randn_like(x) if t > 0 else torch.zeros_like(x)
         return model_mean + noise * (0.5 * model_log_variance).exp()
 
     @torch.no_grad()
-    def sample(self, condition):
+    def sample(self, condition, frame=None):
         img = torch.randn_like(condition)
         for i in reversed(range(0, self.num_timesteps)):
-            img = self.p_sample(img, i, condition_x=condition)
+            img = self.p_sample(img, i, condition_x=condition, frame=frame)
         return img
 
     @torch.no_grad()
@@ -137,42 +142,6 @@ class ConditionalDiffusion(LightningModule):
         x_0 = (x_t - self.sqrt_one_minus_alphas_hat[0] * e_t) / self.sqrt_alphas_hat[0]
         return x_0
 
-    @torch.no_grad()
-    def sample_ccg(self, sample_size, batch_size, window_size, stride, padding_size, use_ddim=False):
-        """
-        Generate a sample using the conditional-crop-generation method.
-        This generates a crop from pure noise in one of the corners of the image and then performs
-        an autoregressive "sliding-window" method to generate further crops that overlap the
-        already-generated parts of the image.
-
-        Args:
-            sample_size (tuple(int)): The spatial dimensions of the sample during auto sampling.
-            batch_size (int): The batch size to sample.
-            window_size (tuple(int)):
-            stride (tuple(int)):
-            padding_size (tuple(int)): The spatial dimensions of the zero padding to add.
-            use_ddim (bool): If True, DDIM is used for the sampling process (which generates faster samples).
-                Else, DDPM sampling is used.
-        """
-
-        # Initialize image with frame
-        sample_shape = (batch_size, self.channels, sample_size[0], sample_size[1])
-        img = torch.randn(sample_shape).to(device=self.device)
-        img = torchvision.transforms.Pad(padding_size)(img)
-
-        # Move sliding window across image to conditionally generate image
-        for h in range(0, img.shape[-2], stride[0]):
-            for w in range(0, img.shape[-1], stride[1]):
-                if use_ddim:
-                    img[:, :, h: h + window_size[0], w: w + window_size[1]] = \
-                        self.sample_ddim(condition=img[:, :, h: h + window_size[0], w: w + window_size[1]],
-                                         sampling_step_size=50)
-                else:
-                    img[:, :, h: h + window_size[0], w: w + window_size[1]] = \
-                        self.sample(condition=img[:, :, h: h + window_size[0], w: w + window_size[1]])
-
-        return img[:, :, padding_size[0]:-padding_size[0], padding_size[1]:-padding_size[1]]
-
     def q_sample(self, x_start, continuous_sqrt_alpha_hat, noise=None):
         noise = noise if noise is not None else torch.randn_like(x_start)
         return continuous_sqrt_alpha_hat * x_start + (1 - continuous_sqrt_alpha_hat ** 2).sqrt() * noise
@@ -193,7 +162,7 @@ class ConditionalDiffusion(LightningModule):
                                 noise=noise)
 
         noise_recon = self.model(
-            torch.cat([x_in['CONDITION_IMG'], x_noisy], dim=1), continuous_sqrt_alpha_hat.view(-1))
+            torch.cat([x_in['CONDITION_IMG'], x_noisy], dim=1), continuous_sqrt_alpha_hat.view(-1), x_in.get('FRAME'))
 
         return F.mse_loss(noise, noise_recon)
 

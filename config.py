@@ -133,19 +133,19 @@ BALLOONS2_VIDEO_CONFIG = Config(image_name='air_balloons',
                                 training_method='video',
                                 crop_size=135,#(135, 130),
                                 network_depth=16,
-                                network_filters=64, available_gpus='2')
+                                network_filters=64, available_gpus='0')
 
 TORNADO_VIDEO_CONFIG = Config(image_name='tornado',
                               training_method='video',
                               crop_size=131,
                               network_depth=16,
-                              network_filters=64, available_gpus='2')
+                              network_filters=64, available_gpus='0')
 
 DUTCH_VIDEO_CONFIG = Config(image_name='dutch2',
                             training_method='video',
                             crop_size=(131, 180),
                             network_depth=16,
-                            network_filters=64, available_gpus='0')
+                            network_filters=64, available_gpus='2')
 
 ### Configurations for visual summary ###
 BALLOONS_SIMPLE_SMALL_CROPS_CONFIG = Config(image_name='balloons.png',
