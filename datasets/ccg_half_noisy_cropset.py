@@ -32,7 +32,7 @@ class CCGSemiNoisyCropSet(Dataset):
         self.dataset_size = dataset_size
 
         self.transform = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
+            # transforms.RandomHorizontalFlip(), # TODO EITHER REMOVE OR MAKE THIS A PARAMETER
             RandomScaleResize(),
             transforms.RandomCrop(self.crop_size, pad_if_needed=True, padding_mode='constant'),
             transforms.Lambda(lambda img: (img[:3, ] * 2) - 1)
@@ -46,9 +46,10 @@ class CCGSemiNoisyCropSet(Dataset):
         # Change a chunk of the image to be complete noise in a random location
         h_noise_index = random.randint(0, self.noisy_chunk_size[0] - 1)
         w_noise_index = random.randint(0, self.noisy_chunk_size[1] - 1)
-        half_noisy_crop[:, h_noise_index:h_noise_index + self.noisy_chunk_size[0], w_noise_index:w_noise_index + self.noisy_chunk_size[1]] = \
-            torch.randn_like(half_noisy_crop[:, h_noise_index:h_noise_index + self.noisy_chunk_size[0], w_noise_index:w_noise_index + self.noisy_chunk_size[1]])
-
+        half_noisy_crop[:,
+                h_noise_index: h_noise_index + self.noisy_chunk_size[0],
+                w_noise_index: w_noise_index + self.noisy_chunk_size[1]]\
+            .normal_()
         return half_noisy_crop
 
     def __len__(self):
