@@ -133,7 +133,13 @@ BALLOONS2_VIDEO_CONFIG = Config(image_name='air_balloons',
                                 training_method='video',
                                 crop_size=135,#(135, 130),
                                 network_depth=16,
-                                network_filters=64, available_gpus='0')
+                                network_filters=64, available_gpus='2')
+
+BALLOONS2_MEDIUM_VIDEO_CONFIG = Config(image_name='air_balloons_medium',
+                                       training_method='video',
+                                       crop_size=270,
+                                       network_depth=16,
+                                       network_filters=64, available_gpus='2')
 
 TORNADO_VIDEO_CONFIG = Config(image_name='tornado',
                               training_method='video',

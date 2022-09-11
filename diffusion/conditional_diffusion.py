@@ -163,6 +163,7 @@ class ConditionalDiffusion(LightningModule):
 
         noise_recon = self.model(
             torch.cat([x_in['CONDITION_IMG'], x_noisy], dim=1), continuous_sqrt_alpha_hat.view(-1), x_in.get('FRAME'))
+            #torch.cat([x_in['CONDITION_IMG'], x_noisy], dim=1), continuous_sqrt_alpha_hat.view(-1), None) # TODO CHOOSE ONE OF THE METHODS AFTER ABLATION
 
         return F.mse_loss(noise, noise_recon)
 
@@ -173,7 +174,7 @@ class ConditionalDiffusion(LightningModule):
             save_diffusion_sample(sample, os.path.join(self.logger.log_dir, f'sample_{self.step_counter}.png'))
 
         loss = self.forward(batch)
-        self.log('train/loss', loss)
+        self.log('train_loss', loss)
         self.step_counter += 1
         return loss
 

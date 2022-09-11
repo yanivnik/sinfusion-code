@@ -49,16 +49,21 @@ def tensor_shuffle_along_t(x):
 # Visualizations
 #####################
 
-def tensor2npimg(x, vmin=-1, vmax=1, normmaxmin=False):
+def tensor2npimg(x, vmin=-1, vmax=1, normmaxmin=False, to_numpy=True):
     """tensor in [-1,1] (1x3xHxW) --> numpy image ready to plt.imshow"""
     if normmaxmin:
         vmin = x.min().item()
         vmax = x.max().item()
-    final = x[0].add(-vmin).div(vmax-vmin).mul(255).add(0.5).clamp(0, 255).permute(1, 2, 0)
-    # if input has 1-channel, pass grayscale to numpy
-    if final.shape[-1] == 1:
-        final = final[:,:,0]
-    return final.to('cpu', torch.uint8).numpy()
+    final = x[0].add(-vmin).div(vmax-vmin).mul(255).add(0.5).clamp(0, 255)
+
+    if to_numpy:
+        final = final.permute(1, 2, 0)
+        # if input has 1-channel, pass grayscale to numpy
+        if final.shape[-1] == 1:
+            final = final[:,:,0]
+        return final.to('cpu', torch.uint8).numpy()
+    else:
+        return final.to('cpu', torch.uint8)
 
 
 torch255tonpimg = lambda x: x[0].add(0.5).clamp(0, 255).permute(1, 2, 0).to('cpu', torch.uint8).numpy()
