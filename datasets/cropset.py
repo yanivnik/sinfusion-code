@@ -1,5 +1,3 @@
-import random
-
 from torch.utils.data import Dataset
 from torchvision import transforms
 
@@ -31,8 +29,4 @@ class CropSet(Dataset):
         return self.dataset_size
 
     def __getitem__(self, item):
-        if len(self.img.shape) == 3:
-            return {'IMG': self.transform(self.img)}
-        else:
-            frame_idx = random.randrange(0, self.img.shape[0])
-            return {'IMG': self.transform(self.img[frame_idx]), 'FRAME': frame_idx}
+        return {'IMG': self.transform(self.img)}

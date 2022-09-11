@@ -109,11 +109,14 @@ def train_video_diffusion(cfg):
     # Create model
     # model = NextNet(in_channels=3, filters_per_layer=cfg.network_filters, depth=cfg.network_depth, frame_conditioned=True)
     # diffusion = Diffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=False)
-    model = NextNet(in_channels=6, filters_per_layer=cfg.network_filters, depth=cfg.network_depth, frame_conditioned=True)
+    model = NextNet(in_channels=6, filters_per_layer=cfg.network_filters, depth=cfg.network_depth,
+                    frame_conditioned=True)
+
     diffusion = ConditionalDiffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=False)
 
     model_callbacks = [pl.callbacks.ModelSummary(max_depth=-1),
-                       pl.callbacks.ModelCheckpoint(filename='single-level-{step}', save_last=True)]
+                       pl.callbacks.ModelCheckpoint(filename='single-level-{step}', save_last=True,
+                                                    save_top_k=10, monitor='train_loss', mode='min')]  # TODO DELETE LIE
 
     tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/", name=cfg.image_name)
     trainer = pl.Trainer(max_steps=training_steps,
@@ -127,7 +130,7 @@ def train_video_diffusion(cfg):
 
 
 def main():
-    cfg = DUTCH_VIDEO_CONFIG
+    cfg = BALLOONS2_MEDIUM_VIDEO_CONFIG
     cfg = parse_cmdline_args_to_config(cfg)
 
     if 'CUDA_VISIBLE_DEVICES' not in os.environ:
