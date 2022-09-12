@@ -1,0 +1,201 @@
+<!doctype html>
+
+<html lang="en">
+    <head>
+        <title></title>
+        <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1">
+		<script type="text/javascript">
+				var video_lengths = [{{video_lengths|join(',')}}];
+                var curImage = [{{start_indexes|join(',')}}];
+				var loop_through = [{{loop_through|join(',')}}];
+
+
+				function sleep(ms) {
+					return new Promise(resolve => setTimeout(resolve, ms));
+				}
+
+                function NextImage(v) {
+					document.getElementById("image_"+v+"_"+curImage[v]).style.display = "none";
+					curImage[v] = curImage[v] + 1;
+					if (curImage[v] >= video_lengths[v])
+						curImage[v] = video_lengths[v]-1; //0;
+                    document.getElementById("image_"+v+"_"+curImage[v]).style.display = "block";
+                }
+				function PrevImage(v) {
+					document.getElementById("image_"+v+"_"+curImage[v]).style.display = "none";
+					curImage[v] = curImage[v] - 1;
+					if (curImage[v] < 0)
+						curImage[v] = 0; // video_lengths[v]-1;
+                    document.getElementById("image_"+v+"_"+curImage[v]).style.display = "block";
+                }
+
+				async function SetCurrentImage(v, img_id) {
+					document.getElementById("image_"+v+"_"+curImage[v]).style.display = "none";
+					curImage[v] = img_id;
+					if (curImage[v] >= video_lengths[v])
+						curImage[v] = 0;
+					document.getElementById("image_"+v+"_"+curImage[v]).style.display = "block";
+					// document.getElementById("video_"+v).frame_text.innerHTML = curImage[v].toString();
+				}
+
+				async function PlayOnce(v) {
+					var img_id;
+					for (img_id = 0; img_id < video_lengths[v]-1; img_id++) {
+						SetCurrentImage(v, curImage[v] + 1);
+						await sleep({{1000/frame_rate}});
+					}
+				}
+
+				async function Loop(v) {
+					loop_through[v] = 1;
+					while (loop_through[v]==1) {
+						SetCurrentImage(v, curImage[v] + 1);
+						await sleep({{1000/frame_rate}});
+					}	
+				}
+
+				async function StopLoop(v) {
+					loop_through[v] = 0;
+				}
+
+				async function PlayOnceAll() {
+					var v;
+					for (v = 0; v < loop_through.length; v++) {
+						curImage[v] = 0;
+					  	PlayOnce(v);
+					}
+				}
+
+
+				async function PlayAll() {
+					var v;
+					for (v = 0; v < loop_through.length; v++) {
+						curImage[v] = 0;
+					  	Loop(v);
+					}
+				}
+
+				async function StopAll() {
+					var v;
+					for (v = 0; v < loop_through.length; v++) {
+					  	StopLoop(v);
+					  	SetCurrentImage(v, 0);
+					}
+				}
+
+				{{"PlayAll();" if play_all_on_load else "" }}
+
+            </script>
+			<script src='https://kit.fontawesome.com/a076d05399.js'></script>
+			<style>
+			.button {
+				background-color: #4CAF50; /* Green */
+				border: none;
+				color: white;
+				padding: 10px 20px;
+				text-align: center;
+				text-decoration: none;
+				display: inline-block;
+				font-size: 18x;
+				vertical-align: middle;
+			}
+			.video {
+				image-rendering: pixelated;
+				/*{{ "width: 100%;" if full_width else "" }}*/
+				/*flex-grow: 1;*/
+			}
+			.content {
+				flex-wrap: wrap;
+				padding: 0 4px;
+			}
+			.column {
+				flex: 100%;
+				/*max-width: {{column_max_width}}%;*/
+				padding: 0 4px;
+			}
+			
+			.collapsible {
+				background-color: #777;
+				color: white;
+				cursor: pointer;
+				padding: 18px;
+				width: 100%;
+				border: none;
+				text-align: center;
+				outline: none;
+				font-size: 25px;
+			}
+
+			.active, .collapsible:hover {
+				background-color: #555;
+			}
+			</style>
+    </head>
+    <body>
+	
+		
+		{% for param in top_params %}
+			<div> <p style="font-weight:bold; font-size:20px"> {{param}} </p></div>
+		{% endfor %}
+
+        
+		<!--
+		<button type="button" class="collapsible">Images</button>
+		<div class="content">
+			<div class="column">
+				{% for img_i in images_paths %}
+					<img src="file://{{img_i}}" style="image-rendering: pixelated; width: 20%;"/> 
+				{% endfor %}		
+			</div>
+		</div>
+		-->
+
+
+		<button type="button" class="button" onclick="PlayOnceAll()"> Play <i class="fas fa-step-forward"></i> All Once </button>
+		<button type="button" class="button" onclick="PlayAll()"> Play <i class="fas fa-sync"></i> All </button>
+		<button type="button" class="button" onclick="StopAll()"> Stop <i class="fas fa-stop"></i> All </button>
+
+
+		{% for title, folders, section_initial_display, column_max_width, full_width in vids %}
+			<button type="button" class="collapsible">{{title}}</button>
+			<div class="content" style="display: {{section_initial_display}}">
+				{% for folder, vid_i, vid_len, vid_color in folders %}
+					<div id="video_{{vid_i}}" class="column" style="max-width: {{column_max_width}}%;">
+<!--						<div id="frame_text" style="font-size: 18pt"> 0 </div>-->
+						{% for img_i in range(video_lengths[vid_i]) %}
+							<div id="image_{{vid_i}}_{{img_i}}" style="display:{{"block" if img_i==0 else "none"}};"">
+								<img src="{{folder}}/{{img_i}}.png" class="video" style="border: solid {{vid_color}}; {{"width: 100%;" if full_width else ""}}"/>
+							</div>
+						{% endfor %}
+						<button type="button" class="button" onclick="PrevImage({{vid_i}})"> <i class="fas fa-step-backward"></i> </button>
+						<button type="button" class="button" onclick="NextImage({{vid_i}})"> <i class="fas fa-step-forward"></i> </button>
+						<button type="button" class="button" onclick="Loop({{vid_i}})"> <i class="fas fa-sync"></i> </button>
+						<button type="button" class="button" onclick="StopLoop({{vid_i}})"> <i class="fas fa-stop"></i> </button>
+					</div>
+				{% endfor %}
+			</div>
+		{% endfor %}
+
+		<button type="button" class="button" onclick="PlayOnceAll()"> Play <i class="fas fa-step-forward"></i> All Once </button>
+		<button type="button" class="button" onclick="PlayAll()"> Play <i class="fas fa-sync"></i> All </button>
+		<button type="button" class="button" onclick="StopAll()"> Stop <i class="fas fa-stop"></i> All </button>
+
+	<script>
+	var coll = document.getElementsByClassName("collapsible");
+	var i;
+
+	for (i = 0; i < coll.length; i++) {
+	  coll[i].addEventListener("click", function() {
+		this.classList.toggle("active");
+		var content = this.nextElementSibling;
+		if (content.style.display === "flex") {
+		  content.style.display = "none";
+		} else {
+		  content.style.display = "flex";
+		}
+	  });
+	}
+	</script>
+
+    </body>
+</html>

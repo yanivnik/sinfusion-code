@@ -131,7 +131,7 @@ NIEGHBOURHOOD_SIMPLE_CONFIG = Config(image_name='neighbourhood_small.png',
 ### Configurations for video generation ###
 BALLOONS2_VIDEO_CONFIG = Config(image_name='air_balloons',
                                 training_method='video',
-                                crop_size=135,#(135, 130),
+                                crop_size=64, ################### 135,
                                 network_depth=16,
                                 network_filters=64, available_gpus='2')
 
@@ -152,6 +152,24 @@ DUTCH_VIDEO_CONFIG = Config(image_name='dutch2',
                             crop_size=(131, 180),
                             network_depth=16,
                             network_filters=64, available_gpus='2')
+
+SKI_VIDEO_CONFIG = Config(image_name='ski_slope',
+                          training_method='video',
+                          crop_size=180,
+                          network_depth=16,
+                          network_filters=64, available_gpus='0')
+
+FISH_VIDEO_CONFIG = Config(image_name='fish',
+                          training_method='video',
+                          crop_size=(135, 220),
+                          network_depth=16,
+                          network_filters=64, available_gpus='0')
+
+BIRDS4_VIDEO_CONFIG = Config(image_name='birds4',
+                             training_method='video',
+                             crop_size=256,
+                             network_depth=16,
+                             network_filters=64, available_gpus='0')
 
 ### Configurations for visual summary ###
 BALLOONS_SIMPLE_SMALL_CROPS_CONFIG = Config(image_name='balloons.png',

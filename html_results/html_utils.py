@@ -47,6 +47,7 @@ def create_videos_html(base_dir, html_filename, vids, vid_size, column_max_width
         vid_size=vid_size,
         column_max_width=column_max_width,
     )
+
     # save html to file
     output_path = os.path.join(base_dir, html_filename)
     with open(output_path, 'w') as f:

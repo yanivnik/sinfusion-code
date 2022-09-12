@@ -21,7 +21,8 @@ class NextNet(nn.Module):
             dims = [filters_per_layer] * depth
 
         time_dim = dims[0]
-        emb_dim = time_dim * 2 if frame_conditioned else time_dim
+        #emb_dim = time_dim * 2 if frame_conditioned else time_dim
+        emb_dim = time_dim * (in_channels // 3) if frame_conditioned else time_dim
         self.depth = depth
         self.layers = nn.ModuleList([])
 
@@ -52,12 +53,16 @@ class NextNet(nn.Module):
              nn.Linear(time_dim * 4, time_dim)
         )
 
-    def forward(self, x, t, frame=None):
+    def forward(self, x, t, frame=None, nextframe=None):
         time_embedding = self.time_encoder(t)
 
         if frame is not None:
             frame_embedding = self.frame_encoder(frame)
-            embedding = torch.cat([time_embedding, frame_embedding], dim=1)
+            if nextframe is not None:
+                next_frame_embedding = self.frame_encoder(nextframe)
+                embedding = torch.cat([time_embedding, frame_embedding, next_frame_embedding], dim=1)
+            else:
+                embedding = torch.cat([time_embedding, frame_embedding], dim=1)
         else:
             embedding = time_embedding
 

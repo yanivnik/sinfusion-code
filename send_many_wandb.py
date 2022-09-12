@@ -5,8 +5,16 @@ from jobs_utils import shipping
 
 def main(wandb_sweep_id):
     # build argss (job dicts)
-    argss = [{}, {}, {}, {}]
-    hosts = ['n103']
+    num_jobs = 4
+    argss = []
+    for i in range(num_jobs):
+        args = {
+        #    'run_name': i,
+        }
+        argss.append(args)
+
+    # argss = [{}, {}, {}, {}]
+    hosts = ['n103', 'n104', 'n105', 'n106']
     forbidden_gpus = {
         # ('n114', 'mcluster11.wisdom.weizmann.ac.il'): [7],
         # 'n110': [6, 7],
