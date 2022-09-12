@@ -19,6 +19,13 @@ def cosine_noise_schedule(timesteps, s=0.008):
     return np.clip(betas, a_min=0, a_max=0.999)
 
 
+def linear_noise_schedule(timesteps):
+    scale = 1000 / timesteps
+    beta_start = scale * 0.0001
+    beta_end = scale * 0.02
+    return np.linspace(beta_start, beta_end, timesteps, dtype=np.float64)
+
+
 def save_diffusion_sample(sample, output_path=None, wandb_logger=None):
     """
     Normalizes the image which was sampled from a diffusion model and saves it to an output file.

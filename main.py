@@ -102,21 +102,18 @@ def train_video_diffusion(cfg):
     images = torch.cat(images, dim=0)
 
     crop_size = cfg.crop_size if isinstance(cfg.crop_size, tuple) else (cfg.crop_size, cfg.crop_size)
-    # train_dataset = CropSet(image=images, crop_size=crop_size)
     train_dataset = FrameSet(frames=images, crop_size=crop_size)
     train_loader = DataLoader(train_dataset, batch_size=1, num_workers=4, shuffle=True)
 
     # Create model
-    # model = NextNet(in_channels=3, filters_per_layer=cfg.network_filters, depth=cfg.network_depth, frame_conditioned=True)
-    # diffusion = Diffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=False)
     model = NextNet(in_channels=6, filters_per_layer=cfg.network_filters, depth=cfg.network_depth,
                     frame_conditioned=True)
-
     diffusion = ConditionalDiffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=False)
+    #diffusion.dataset = train_dataset
 
     model_callbacks = [pl.callbacks.ModelSummary(max_depth=-1),
                        pl.callbacks.ModelCheckpoint(filename='single-level-{step}', save_last=True,
-                                                    save_top_k=10, monitor='train_loss', mode='min')]  # TODO DELETE LIE
+                                                    save_top_k=10, monitor='train_loss', mode='min')]
 
     tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/", name=cfg.image_name)
     trainer = pl.Trainer(max_steps=training_steps,
@@ -130,7 +127,7 @@ def train_video_diffusion(cfg):
 
 
 def main():
-    cfg = BALLOONS2_MEDIUM_VIDEO_CONFIG
+    cfg = BALLOONS2_VIDEO_CONFIG
     cfg = parse_cmdline_args_to_config(cfg)
 
     if 'CUDA_VISIBLE_DEVICES' not in os.environ:

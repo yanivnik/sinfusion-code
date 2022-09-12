@@ -1,11 +1,12 @@
 import os
+import random
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 from pytorch_lightning import LightningModule
 
-from diffusion.diffusion_utils import cosine_noise_schedule, save_diffusion_sample, to_torch
+from diffusion.diffusion_utils import cosine_noise_schedule, save_diffusion_sample, to_torch, linear_noise_schedule
 
 
 # TODO UNIFY THE TWO DIFFUSION CLASSES
@@ -79,12 +80,21 @@ class ConditionalDiffusion(LightningModule):
             [self.sqrt_alphas_hat_prev[t + 1]]).repeat(batch_size, 1).view((batch_size,)).to(x.device)
 
         if frame is not None:
-            frame_tensor = torch.full((batch_size,), frame, dtype=torch.int64, device=self.device)
+            if isinstance(frame, tuple):
+                frame_tensor = torch.full((batch_size,), frame[0], dtype=torch.int64, device=self.device)
+                next_frame_tensor = torch.full((batch_size,), frame[1], dtype=torch.int64, device=self.device)
+            else:
+                frame_tensor = torch.full((batch_size,), frame, dtype=torch.int64, device=self.device)
+                next_frame_tensor = None
         else:
-            frame_tensor = None
+            frame_tensor = next_frame_tensor = None
 
-        x_recon = self.predict_start_from_noise(
-            x, t=t, noise=self.model(torch.cat([condition_x, x], dim=1), noise_level, frame_tensor))
+        if isinstance(frame, tuple):
+            x_recon = self.predict_start_from_noise(
+                x, t=t, noise=self.model(torch.cat([condition_x[:, :3], x, condition_x[:, 3:]], dim=1), noise_level, frame_tensor, next_frame_tensor))
+        else:
+            x_recon = self.predict_start_from_noise(
+                x, t=t, noise=self.model(torch.cat([condition_x, x], dim=1), noise_level, frame_tensor))
 
         if clip_denoised:
             x_recon.clamp_(-1., 1.)
@@ -101,12 +111,13 @@ class ConditionalDiffusion(LightningModule):
     @torch.no_grad()
     def sample(self, condition, frame=None):
         img = torch.randn_like(condition)
+        ####img = torch.randn_like(condition[:, :3, :, :]) # TODO DONT COMMIT THIS UGLY SHIT
         for i in reversed(range(0, self.num_timesteps)):
             img = self.p_sample(img, i, condition_x=condition, frame=frame)
         return img
 
     @torch.no_grad()
-    def sample_ddim(self, condition, x_T=None, sampling_step_size=100):
+    def sample_ddim(self, condition, x_T=None, sampling_step_size=100, frame=None):
         """
         Sample from the model, using the DDIM sampling process.
         The DDIM implicit sampling process is determinstic, and will always generate the same output
@@ -122,6 +133,11 @@ class ConditionalDiffusion(LightningModule):
         seq = range(0, self.num_timesteps, sampling_step_size)
         seq_next = [-1] + list(seq[:-1])
 
+        if frame is not None:
+            frame_tensor = torch.full((batch_size,), frame, dtype=torch.int64, device=self.device)
+        else:
+            frame_tensor = None
+
         if x_T is None:
             x_t = torch.randn(condition.shape, device=self.device)
         else:
@@ -132,13 +148,13 @@ class ConditionalDiffusion(LightningModule):
             noise_level = torch.FloatTensor(
                 [self.sqrt_alphas_hat_prev[t + 1]]).repeat(batch_size, 1).view((batch_size,)).to(x_t.device)
 
-            e_t = self.model(torch.cat([condition, x_t], dim=1), noise_level)
+            e_t = self.model(torch.cat([condition, x_t], dim=1), noise_level, frame=frame_tensor)
             predicted_x0 = (x_t - self.sqrt_one_minus_alphas_hat[t] * e_t) / self.sqrt_alphas_hat[t]
             direction_to_x_t = self.sqrt_one_minus_alphas_hat[t_next] * e_t
             x_t = self.sqrt_alphas_hat[t_next] * predicted_x0 + direction_to_x_t
 
         t_tensor = torch.full((batch_size,), 0, dtype=torch.int64, device=self.device)
-        e_t = self.model(torch.cat([condition, x_t], dim=1), t_tensor)
+        e_t = self.model(torch.cat([condition, x_t], dim=1), t_tensor, frame_tensor)
         x_0 = (x_t - self.sqrt_one_minus_alphas_hat[0] * e_t) / self.sqrt_alphas_hat[0]
         return x_0
 
@@ -147,6 +163,11 @@ class ConditionalDiffusion(LightningModule):
         return continuous_sqrt_alpha_hat * x_start + (1 - continuous_sqrt_alpha_hat ** 2).sqrt() * noise
 
     def forward(self, x_in, noise=None):
+        cond = x_in['CONDITION_IMG']
+        #if self.step_counter >= 100_000 and self.step_counter % 4 == 0 and x_in.get('FRAME')[0] >= 2:
+        #    earlier_frame = self.dataset.frames[x_in.get('FRAME')[0] - 2][None, ...].to(device=self.device) * 2 - 1
+        #    cond = self.sample_ddim(condition=earlier_frame, sampling_step_size=50, frame=x_in.get('FRAME')[0] - 1)
+
         x_start = x_in['IMG']
         b = x_start.shape[0]
         t = np.random.randint(1, self.num_timesteps + 1)
@@ -162,8 +183,10 @@ class ConditionalDiffusion(LightningModule):
                                 noise=noise)
 
         noise_recon = self.model(
-            torch.cat([x_in['CONDITION_IMG'], x_noisy], dim=1), continuous_sqrt_alpha_hat.view(-1), x_in.get('FRAME'))
-            #torch.cat([x_in['CONDITION_IMG'], x_noisy], dim=1), continuous_sqrt_alpha_hat.view(-1), None) # TODO CHOOSE ONE OF THE METHODS AFTER ABLATION
+            #torch.cat([x_in['PREV_CONDITION_IMG'], x_noisy, x_in['NEXT_CONDITION_IMG']], dim=1),
+            #continuous_sqrt_alpha_hat.view(-1),
+            #x_in.get('PREV_FRAME_DIFF'), x_in.get('NEXT_FRAME_DIFF'))
+            torch.cat([cond, x_noisy], dim=1), continuous_sqrt_alpha_hat.view(-1), x_in.get('FRAME').to(dtype=torch.float32))
 
         return F.mse_loss(noise, noise_recon)
 
