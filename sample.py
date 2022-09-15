@@ -13,6 +13,7 @@ from diffusion.conditional_diffusion import ConditionalDiffusion
 from diffusion.diffusion import Diffusion
 from diffusion.diffusion_utils import save_diffusion_sample
 from models.nextnet import NextNet
+from settings import results_dir, datasets_dir
 import argparse
 
 
@@ -69,11 +70,13 @@ def generate_video(cfg, save_frames=True):
                                                                     frame_conditioned=True),
                                                       timesteps=cfg.diffusion_timesteps).cuda()
 
-    total_frame_count = len(os.listdir(f'./images/video/{cfg.image_name}'))
+    video_dir = os.path.join(datasets_dir, 'images', 'video', f'{cfg.image_name}')
+
+    total_frame_count = len(os.listdir(video_dir))
 
     # Choose starting frame
     start_frame_idx = 1#random.randint(1, total_frame_count)
-    start_frame = imread(f'./images/video/{cfg.image_name}/{start_frame_idx}.png').cuda() * 2 - 1
+    start_frame = imread(os.path.join(video_dir, f'{start_frame_idx}.png')).cuda() * 2 - 1
     if save_frames:
         save_diffusion_sample(start_frame, os.path.join(sample_directory, '0.png'))
     samples = [start_frame]
@@ -100,7 +103,7 @@ def generate_video(cfg, save_frames=True):
 
     # Sample frames
     for frame in range(1, total_frame_count + 1):
-        s = model.sample(condition=samples[-1], frame=-1)#frame)
+        s = model.sample(condition=samples[-1], frame=1)#frame)
         samples.append(s)
         if save_frames:
             save_diffusion_sample(s, os.path.join(sample_directory, f'{frame}.png'))
@@ -165,8 +168,8 @@ def main():
     cfg = parse_cmdline_args_to_config(cfg)
 
     cfg.version_name = '17-1-2-3-framediff-with-100k-200k-curriculum'
-    cfg.experiment_name = 'curriculum-100k-200k-fd-train-with-minus1-fd-sample'
-    cfg.sample_directory = '/home/yanivni/data/tmp/organized-outputs/'
+    cfg.experiment_name = 'curriculum-100k-200k-fd-train-with-minus1-fd-sample_niv'
+    cfg.sample_directory = os.path.join(results_dir, 'organized-outputs')
 
     if 'CUDA_VISIBLE_DEVICES' not in os.environ:
         os.environ['CUDA_VISIBLE_DEVICES'] = cfg.available_gpus

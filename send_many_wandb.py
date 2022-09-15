@@ -3,7 +3,7 @@ import common_utils as utils
 from jobs_utils import shipping
 
 
-def main(wandb_sweep_id):
+def main():
     # build argss (job dicts)
     num_jobs = 4
     argss = []
@@ -21,8 +21,8 @@ def main(wandb_sweep_id):
         # 'n108': [0],
     }
 
-    jobs_folder = '/home/yanivni/data/projects_data/jobs/single-image-diffusion'
-    run_folder = '/home/yanivni/data/remote_projects/single-image-diffusion'
+    jobs_folder = '/home/nivh/data/projects_data/jobs/single-image-diffusion'
+    run_folder = '/home/nivh/data/remote_projects/single-image-diffusion'
     #script_name = f'wandb agent weizmann/single-image-diffusion/{wandb_sweep_id}'
     script_name = f'python sample.py'
     n_jobs = shipping.ship_as_queue(argss, hosts, script_name, jobs_folder, run_folder,
@@ -32,7 +32,7 @@ def main(wandb_sweep_id):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print('Usage: python send_many_wandb.py <WANDB_SWEEP_ID>')
-        exit()
-    main(sys.argv[1])
+    # if len(sys.argv) != 2:
+    #     print('Usage: python send_many_wandb.py <WANDB_SWEEP_ID>')
+    #     exit()
+    main()
