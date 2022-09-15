@@ -1,0 +1,85 @@
+<!doctype html>
+
+<html lang="en">
+    <head>
+        <title></title>
+        <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1">
+		<script src='https://kit.fontawesome.com/a076d05399.js'></script>
+		<style>
+		.content {
+			flex-wrap: wrap;
+			padding: 0 4px;
+		}
+		.column {
+			flex: {{column_max_width}}%;
+			padding: 0 4px;
+		}
+		.collapsible {
+			background-color: #777;
+			color: white;
+			cursor: pointer;
+			padding: 18px;
+			width: 100%;
+			border: none;
+			text-align: center;
+			outline: none;
+			font-size: 25px;
+		}
+		.active, .collapsible:hover {
+			background-color: #555;
+		}
+		</style>
+    </head>
+    <body>
+
+
+<!--		{% for param in top_params %}-->
+<!--			<div> <p style="font-weight:bold; font-size:20px"> {{param}} </p></div>-->
+<!--		{% endfor %}-->
+
+
+		<!--
+		<button type="button" class="collapsible">Images</button>
+		<div class="content">
+			<div class="column">
+				{% for img_i in images_paths %}
+					<img src="file://{{img_i}}" style="image-rendering: pixelated; width: 20%;"/>
+				{% endfor %}
+			</div>
+		</div>
+		-->
+
+
+		{% for title, paths in vids %}
+			<button type="button" class="collapsible">{{title}}</button>
+			<div class="content" style="display: flex">
+				{% for path in paths %}
+					<div id="ssss" class="column">
+						<video class="vid_generation" width="{{vid_size}}" height="{{vid_size}}" id="aaa" autoplay="" controls="" muted="" loop="" height="100">
+							<source src="{{path}}" type="video/mp4">
+						</video>
+					</div>
+				{% endfor %}
+			</div>
+		{% endfor %}
+
+
+	<script>
+	var coll = document.getElementsByClassName("collapsible");
+	var i;
+
+	for (i = 0; i < coll.length; i++) {
+	  coll[i].addEventListener("click", function() {
+		this.classList.toggle("active");
+		var content = this.nextElementSibling;
+		if (content.style.display === "flex") {
+		  content.style.display = "none";
+		} else {
+		  content.style.display = "flex";
+		}
+	  });
+	}
+	</script>
+
+    </body>
+</html>
