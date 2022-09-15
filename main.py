@@ -109,7 +109,6 @@ def train_video_diffusion(cfg):
     model = NextNet(in_channels=6, filters_per_layer=cfg.network_filters, depth=cfg.network_depth,
                     frame_conditioned=True)
     diffusion = ConditionalDiffusion(model, channels=3, timesteps=cfg.diffusion_timesteps, auto_sample=False)
-    #diffusion.dataset = train_dataset
 
     model_callbacks = [pl.callbacks.ModelSummary(max_depth=-1),
                        pl.callbacks.ModelCheckpoint(filename='single-level-{step}', save_last=True,
