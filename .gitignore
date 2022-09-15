@@ -1,3 +1,5 @@
+settings.py
+
 lightning_logs
 wandb
 data
