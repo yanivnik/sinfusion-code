@@ -1,4 +1,3 @@
-import sys
 import common_utils as utils
 from jobs_utils import shipping
 
@@ -7,11 +6,8 @@ def main():
     # build argss (job dicts)
     num_jobs = 4
     argss = []
-    for i in range(num_jobs):
-        args = {
-        #    'run_name': i,
-        }
-        argss.append(args)
+    for i in range(1, num_jobs + 1):
+        argss.append({'run_name': i})
 
     # argss = [{}, {}, {}, {}]
     hosts = ['n103', 'n104', 'n105', 'n106']
@@ -21,8 +17,8 @@ def main():
         # 'n108': [0],
     }
 
-    jobs_folder = '/home/nivh/data/projects_data/jobs/single-image-diffusion'
-    run_folder = '/home/nivh/data/remote_projects/single-image-diffusion'
+    jobs_folder = '/home/yanivni/data/projects_data/jobs/single-image-diffusion'
+    run_folder = '/home/yanivni/data/remote_projects/single-image-diffusion'
     #script_name = f'wandb agent weizmann/single-image-diffusion/{wandb_sweep_id}'
     script_name = f'python sample.py'
     n_jobs = shipping.ship_as_queue(argss, hosts, script_name, jobs_folder, run_folder,

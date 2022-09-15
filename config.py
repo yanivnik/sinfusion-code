@@ -37,6 +37,7 @@ def log_config(cfg):
 
 def parse_cmdline_args_to_config(cfg):
     parser = argparse.ArgumentParser(description='Command line configuration')
+    parser.add_argument('--run_name', type=str, help='A name for the current experiment')
     parser.add_argument('--image_name', type=str, help='The image to train the model on')
     parser.add_argument('--training_method', type=str, choices=['simple', 'ccg', 'video'], help='The type of training mechanism')
     parser.add_argument('--diffusion_timesteps', type=int, help='Amount of diffusion timesteps to perform per level')
@@ -131,7 +132,7 @@ NIEGHBOURHOOD_SIMPLE_CONFIG = Config(image_name='neighbourhood_small.png',
 ### Configurations for video generation ###
 BALLOONS2_VIDEO_CONFIG = Config(image_name='air_balloons',
                                 training_method='video',
-                                crop_size=64, ################### 135,
+                                crop_size=135,
                                 network_depth=16,
                                 network_filters=64, available_gpus='2')
 

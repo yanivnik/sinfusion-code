@@ -55,10 +55,11 @@ def generate_video(cfg, save_frames=True):
     Args:
          save_frames: Should the single frames also be saved.
     """
-    run_id = random_name()
+    run_id = cfg.run_name or random_name()
 
     # Create sample directory
     sample_directory = os.path.join(cfg.sample_directory, 'Video Generation', f'{cfg.image_name}', cfg.experiment_name, run_id)
+    video_dir = os.path.join(datasets_dir, 'images', 'video', f'{cfg.image_name}')
     os.makedirs(sample_directory, exist_ok=True)
     print(f'Sample directory: {sample_directory}')
 
@@ -70,36 +71,14 @@ def generate_video(cfg, save_frames=True):
                                                                     frame_conditioned=True),
                                                       timesteps=cfg.diffusion_timesteps).cuda()
 
-    video_dir = os.path.join(datasets_dir, 'images', 'video', f'{cfg.image_name}')
-
     total_frame_count = len(os.listdir(video_dir))
 
     # Choose starting frame
-    start_frame_idx = 1#random.randint(1, total_frame_count)
+    start_frame_idx = 1  #random.randint(1, total_frame_count)
     start_frame = imread(os.path.join(video_dir, f'{start_frame_idx}.png')).cuda() * 2 - 1
     if save_frames:
         save_diffusion_sample(start_frame, os.path.join(sample_directory, '0.png'))
     samples = [start_frame]
-
-    #interp_version_name = '7-all-frames-conditioned-on-past-and-future-frames'
-    #interp_path = get_model_path(cfg.image_name, interp_version_name)
-    #interp_model = ConditionalDiffusion.load_from_checkpoint(interp_path,
-    #                                                         model=NextNet(in_channels=9, depth=16,
-    #                                                                       frame_conditioned=True),
-    #                                                         timesteps=500, strict=False).to(device='cuda:0')
-    #N = 5
-    #for frame in range(0, total_frame_count, N):
-    #    s = model.sample(condition=samples[-1], frame=N)
-    #    #condition_interp = torch.cat((samples[-1], s), dim=1)
-    #    for interp_frame in range(1, N):
-    #        condition_interp = torch.cat((samples[-1], s), dim=1)
-    #        s_interp = interp_model.sample(condition=condition_interp, frame=(interp_frame, N - interp_frame))
-    #        if save_frames:
-    #            save_diffusion_sample(s_interp, os.path.join(sample_directory, f'{frame+interp_frame}.png'))
-    #        samples.append(s_interp)
-    #    if save_frames:
-    #        save_diffusion_sample(s, os.path.join(sample_directory, f'{frame + N}.png'))
-    #    samples.append(s)
 
     # Sample frames
     for frame in range(1, total_frame_count + 1):
@@ -153,22 +132,14 @@ def generate_from_sketch(cfg):
     pass
 
 
-def get_args():
-    parser = argparse.ArgumentParser(description='Sampling args')
-    parser.add_argument('--run_name', type=str)
-    return parser.parse_args()
-
-
 def main():
     gpu_holder = hold_gpus()
-
-    args = get_args()
 
     cfg = BALLOONS2_VIDEO_CONFIG
     cfg = parse_cmdline_args_to_config(cfg)
 
     cfg.version_name = '17-1-2-3-framediff-with-100k-200k-curriculum'
-    cfg.experiment_name = 'curriculum-100k-200k-fd-train-with-minus1-fd-sample_niv'
+    cfg.experiment_name = 'runname_test'
     cfg.sample_directory = os.path.join(results_dir, 'organized-outputs')
 
     if 'CUDA_VISIBLE_DEVICES' not in os.environ:
