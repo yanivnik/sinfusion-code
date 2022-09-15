@@ -170,7 +170,13 @@ BIRDS4_VIDEO_CONFIG = Config(image_name='birds4',
                              training_method='video',
                              crop_size=256,
                              network_depth=16,
-                             network_filters=64, available_gpus='0')
+                             network_filters=64, available_gpus='1')
+
+JUNCTION_VIDEO_CONFIG = Config(image_name='junction',
+                               training_method='video',
+                               crop_size=180,
+                               network_depth=16,
+                               network_filters=64, available_gpus='2')
 
 ### Configurations for visual summary ###
 BALLOONS_SIMPLE_SMALL_CROPS_CONFIG = Config(image_name='balloons.png',

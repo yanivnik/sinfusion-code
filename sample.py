@@ -48,7 +48,7 @@ def noise_img(img, model, t):
     return noisy_img
 
 
-def generate_video(cfg, save_frames=True):
+def generate_video(cfg, save_frames=True, frame_size=None):
     """
     Generates and saves a video (in mp4 format) based on the configuration parameters.
 
@@ -76,6 +76,10 @@ def generate_video(cfg, save_frames=True):
     # Choose starting frame
     start_frame_idx = 1  #random.randint(1, total_frame_count)
     start_frame = imread(os.path.join(video_dir, f'{start_frame_idx}.png')).cuda() * 2 - 1
+
+    if frame_size is not None:
+        start_frame = resize(start_frame, out_shape=frame_size)
+
     if save_frames:
         save_diffusion_sample(start_frame, os.path.join(sample_directory, '0.png'))
     samples = [start_frame]
@@ -90,7 +94,7 @@ def generate_video(cfg, save_frames=True):
     # Save video
     ordered_samples = torch.cat(samples, dim=0)
     resized_samples = resize(ordered_samples, out_shape=(3, (start_frame.shape[-2] // 2) * 2, (start_frame.shape[-1] // 2) * 2))
-    torchvid2mp4(resized_samples.permute((1, 0, 2, 3)), os.path.join(sample_directory, '..', f'video_{run_id}.mp4'))
+    torchvid2mp4(resized_samples.permute((1, 0, 2, 3)), os.path.join(sample_directory, '..', f'{run_id}.mp4'))
 
 
 def generate_diverse_samples(cfg, sizes=None):
@@ -139,7 +143,7 @@ def main():
     cfg = parse_cmdline_args_to_config(cfg)
 
     cfg.version_name = '17-1-2-3-framediff-with-100k-200k-curriculum'
-    cfg.experiment_name = 'runname_test'
+    cfg.experiment_name = 'fd-1-2-3-bestcur-resized-to-100-150'
     cfg.sample_directory = os.path.join(results_dir, 'organized-outputs')
 
     if 'CUDA_VISIBLE_DEVICES' not in os.environ:
@@ -148,7 +152,7 @@ def main():
     log_config(cfg)
 
     if cfg.training_method == 'video':
-        generate_video(cfg)
+        generate_video(cfg, True, (100, 150))
 
 
 if __name__ == '__main__':
