@@ -32,9 +32,8 @@ class CCGSemiNoisyCropSet(Dataset):
         self.dataset_size = dataset_size
 
         self.transform = transforms.Compose([
-            # transforms.RandomHorizontalFlip(), # TODO EITHER REMOVE OR MAKE THIS A PARAMETER
             RandomScaleResize(),
-            transforms.RandomCrop(self.crop_size, pad_if_needed=True, padding_mode='constant'),
+            transforms.RandomCrop(self.crop_size, pad_if_needed=False, padding_mode='constant'),
             transforms.Lambda(lambda img: (img[:3, ] * 2) - 1)
         ])
 
