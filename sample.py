@@ -86,7 +86,7 @@ def generate_video(cfg, save_frames=True, frame_size=None):
 
     # Sample frames
     for frame in range(1, total_frame_count + 1):
-        s = model.sample(condition=samples[-1], frame=1)#frame)
+        s = model.sample(condition=samples[-1], frame_diff=1)#frame)
         samples.append(s)
         if save_frames:
             save_diffusion_sample(s, os.path.join(sample_directory, f'{frame}.png'))
@@ -143,7 +143,7 @@ def main():
     cfg = parse_cmdline_args_to_config(cfg)
 
     cfg.version_name = '17-1-2-3-framediff-with-100k-200k-curriculum'
-    cfg.experiment_name = 'fd-1-2-3-bestcur-resized-to-100-150'
+    cfg.experiment_name = 'ENTER-EXPERIMENT-NAME-HERE'
     cfg.sample_directory = os.path.join(results_dir, 'organized-outputs')
 
     if 'CUDA_VISIBLE_DEVICES' not in os.environ:
@@ -152,7 +152,7 @@ def main():
     log_config(cfg)
 
     if cfg.training_method == 'video':
-        generate_video(cfg, True, (100, 150))
+        generate_video(cfg, True)
 
 
 if __name__ == '__main__':

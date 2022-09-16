@@ -6,7 +6,7 @@ class CropSet(Dataset):
     """
     A dataset comprised of crops of various augmentation of a single image.
     """
-    def __init__(self, image, crop_size, dataset_size=5000):
+    def __init__(self, image, crop_size, use_flip=True, dataset_size=5000):
         """
         Args:
             image (torch.tensor): The image to generate crops from.
@@ -17,12 +17,13 @@ class CropSet(Dataset):
         self.crop_size = crop_size
         self.dataset_size = dataset_size
 
-        self.transform = transforms.Compose([
-            #transforms.RandomHorizontalFlip(), # TODO EITHER REMOVE OR MAKE THIS A PARAMETER
-            transforms.RandomCrop(self.crop_size, pad_if_needed=False),
+        transform_list = [transforms.RandomHorizontalFlip()] if use_flip else []
+        transform_list += [
+            transforms.RandomCrop(self.crop_size, pad_if_needed=False, padding_mode='constant'),
             transforms.Lambda(lambda img: (img[:3, ] * 2) - 1)
-        ])
+        ]
 
+        self.transform = transforms.Compose(transform_list)
         self.img = image
 
     def __len__(self):

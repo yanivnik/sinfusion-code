@@ -38,7 +38,7 @@ def create_videos_html(base_dir, html_filename, vids, vid_size, column_max_width
 
     """
 
-    TEMPLATE_FILE = r"html_results/html_videos_template.html"
+    TEMPLATE_FILE = r"common_utils/html_videos_template.html"
     templateLoader = jinja2.FileSystemLoader(searchpath="./")
     templateEnv = jinja2.Environment(loader=templateLoader)
     template = templateEnv.get_template(TEMPLATE_FILE)

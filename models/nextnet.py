@@ -53,16 +53,12 @@ class NextNet(nn.Module):
              nn.Linear(time_dim * 4, time_dim)
         )
 
-    def forward(self, x, t, frame=None, nextframe=None):
+    def forward(self, x, t, frame_diff=None):
         time_embedding = self.time_encoder(t)
 
-        if frame is not None:
-            frame_embedding = self.frame_encoder(frame)
-            if nextframe is not None:
-                next_frame_embedding = self.frame_encoder(nextframe)
-                embedding = torch.cat([time_embedding, frame_embedding, next_frame_embedding], dim=1)
-            else:
-                embedding = torch.cat([time_embedding, frame_embedding], dim=1)
+        if frame_diff is not None:
+            frame_embedding = self.frame_encoder(frame_diff)
+            embedding = torch.cat([time_embedding, frame_embedding], dim=1)
         else:
             embedding = time_embedding
 
