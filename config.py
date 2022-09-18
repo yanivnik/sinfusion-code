@@ -66,6 +66,16 @@ BALLOONS_SIMPLE_CONFIG = Config(image_name='balloons.png',
                                 network_depth=16,
                                 network_filters=64)
 
+BALLOONS_COLLOSEUM_COMBINED_CONFIG = Config(image_name='balloons.png-colusseum_changed.png',
+                                crop_size=178,
+                                network_depth=16,
+                                network_filters=64)
+
+TAPESTRY_COMBINED_CONFIG = Config(image_name='tap1.png-tap2.png-tap3.png',
+                                crop_size=100,
+                                network_depth=16,
+                                network_filters=64)
+
 BALLOONS_SIMPLE_VS_PRETRAIN_CONFIG = Config(image_name='balloons_scale=0.729.png',
                                             crop_size=128,
                                             network_depth=16,
@@ -92,6 +102,11 @@ STARRY_NIGHT_SIMPLE_CONFIG = Config(image_name='starry_night.png',
                                     crop_size=195,
                                     network_depth=16,
                                     network_filters=64)
+
+COLUSSEUM_SIMPLE_CONFIG = Config(image_name='colusseum_changed.png',
+                                crop_size=178,
+                                network_depth=16,
+                                network_filters=64)
 
 MOUNTAINS3_SIMPLE_CONFIG = Config(image_name='mountains3.png',
                                   crop_size=168,
@@ -134,49 +149,49 @@ BALLOONS2_VIDEO_CONFIG = Config(image_name='air_balloons',
                                 training_method='video',
                                 crop_size=135,
                                 network_depth=16,
-                                network_filters=64, available_gpus='2')
-
-BALLOONS2_MEDIUM_VIDEO_CONFIG = Config(image_name='air_balloons_medium',
-                                       training_method='video',
-                                       crop_size=270,
-                                       network_depth=16,
-                                       network_filters=64, available_gpus='2')
+                                network_filters=64)
 
 TORNADO_VIDEO_CONFIG = Config(image_name='tornado',
                               training_method='video',
                               crop_size=131,
                               network_depth=16,
-                              network_filters=64, available_gpus='0')
+                              network_filters=64)
 
 DUTCH_VIDEO_CONFIG = Config(image_name='dutch2',
                             training_method='video',
                             crop_size=(131, 180),
                             network_depth=16,
-                            network_filters=64, available_gpus='2')
+                            network_filters=64)
 
 SKI_VIDEO_CONFIG = Config(image_name='ski_slope',
                           training_method='video',
                           crop_size=180,
                           network_depth=16,
-                          network_filters=64, available_gpus='0')
+                          network_filters=64)
 
 FISH_VIDEO_CONFIG = Config(image_name='fish',
                           training_method='video',
                           crop_size=(135, 220),
                           network_depth=16,
-                          network_filters=64, available_gpus='0')
+                          network_filters=64)
 
 BIRDS4_VIDEO_CONFIG = Config(image_name='birds4',
                              training_method='video',
                              crop_size=256,
                              network_depth=16,
-                             network_filters=64, available_gpus='1')
+                             network_filters=64)
 
 JUNCTION_VIDEO_CONFIG = Config(image_name='junction',
                                training_method='video',
                                crop_size=180,
                                network_depth=16,
-                               network_filters=64, available_gpus='2')
+                               network_filters=64)
+
+LIZARD_VIDEO_CONFIG = Config(image_name='lizard',
+                                training_method='video',
+                                crop_size=180,
+                                network_depth=16,
+                                network_filters=64)
 
 ### Configurations for visual summary ###
 BALLOONS_SIMPLE_SMALL_CROPS_CONFIG = Config(image_name='balloons.png',
