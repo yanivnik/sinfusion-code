@@ -1,5 +1,4 @@
 import os
-import re
 
 import pytorch_lightning as pl
 import torch
@@ -19,9 +18,11 @@ def train_simple_diffusion(cfg):
     # Training hyperparameters
     training_steps = 200_000
 
+    images = torch.cat([imread(f'./images/{image_name}') for image_name in cfg.image_name.split('-')], dim=0)
+
     # Create training datasets and data loaders
     crop_size = cfg.crop_size if isinstance(cfg.crop_size, tuple) else (cfg.crop_size, cfg.crop_size)
-    train_dataset = CropSet(image=imread(f'./images/{cfg.image_name}')[0], crop_size=crop_size)
+    train_dataset = CropSet(image=images, crop_size=crop_size, use_flip=False)
     train_loader = DataLoader(train_dataset, batch_size=1, num_workers=4, shuffle=True)
 
     # Create evaluation datasets and data loaders
@@ -39,7 +40,8 @@ def train_simple_diffusion(cfg):
         model_callbacks.append(pl.callbacks.ModelCheckpoint(filename='single-level-{step}-{val_loss:.2f}', save_last=True,
                                                             save_top_k=3, monitor='val_loss', mode='min'))
     else:
-        model_callbacks.append(pl.callbacks.ModelCheckpoint(filename='single-level-{step}', save_last=True))
+        model_callbacks.append(pl.callbacks.ModelCheckpoint(filename='single-level-{step}', save_last=True,
+                               save_top_k=10, monitor='train_loss', mode='min'))
 
     tb_logger = pl.loggers.TensorBoardLogger("lightning_logs/", name=cfg.image_name)
     trainer = pl.Trainer(max_steps=training_steps,

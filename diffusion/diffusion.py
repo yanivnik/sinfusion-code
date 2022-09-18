@@ -9,7 +9,7 @@ from metrics.swd_score import get_swd_scores
 
 class Diffusion(LightningModule):
     def __init__(self, model, channels=3, timesteps=1000,
-                 initial_lr=2e-4,
+                 initial_lr=2e-4, training_target='x0',
                  auto_sample=True, sample_every_n_steps=1000, sample_size=(32, 32)):
         """
         Args:
@@ -21,6 +21,9 @@ class Diffusion(LightningModule):
                 The amount of timesteps used to generate the noising schedule.
             initial_lr (float):
                 The initial learning rate for the diffusion training.
+            training_target (str):
+                The type of parameterization to train the backbone model on.
+                Can be either 'x0' or 'noise'.
             auto_sample (bool):
                 Should the model perform sampling during training.
                 If False, the following sampling parameters are ignored.
@@ -40,6 +43,8 @@ class Diffusion(LightningModule):
         self.channels = channels
         self.model = model
         self.initial_lr = initial_lr
+        self.training_target = training_target.lower()
+        assert self.training_target in ['x0', 'noise']
 
         betas = cosine_noise_schedule(timesteps)
         self.num_timesteps = int(betas.shape[0])
@@ -75,7 +80,11 @@ class Diffusion(LightningModule):
     def p_mean_variance(self, x, t, clip_denoised):
         batch_size = x.shape[0]
         t_tensor = torch.full((batch_size,), t, dtype=torch.int64, device=self.device)
-        x_recon = self.predict_start_from_noise(x, t=t, noise=self.model(x, t_tensor))
+
+        if self.training_target == 'x0':
+            x_recon = self.model(x, t_tensor)
+        else:
+            x_recon = self.predict_start_from_noise(x, t=t, noise=self.model(x, t_tensor))
 
         if clip_denoised:
             x_recon.clamp_(-1., 1.)
@@ -170,9 +179,13 @@ class Diffusion(LightningModule):
 
         # Attempt to reconstruct white noise that was used in forward process
         t_tensor = torch.full((batch_size, ), t, dtype=torch.int64, device=self.device)
-        noise_recon = self.model(x_noisy, t_tensor)
 
-        return F.mse_loss(noise, noise_recon)
+        if self.training_target == 'x0':
+            x0_recon = self.model(x_noisy, t_tensor)
+            return F.mse_loss(x, x0_recon)
+        else:
+            noise_recon = self.model(x_noisy, t_tensor)
+            return F.mse_loss(noise, noise_recon)
 
     def training_step(self, batch, batch_idx):
         if self.auto_sample and self.step_counter % self.sample_every_n_steps == 0:
@@ -184,6 +197,7 @@ class Diffusion(LightningModule):
         self.step_counter += 1
         return loss
 
+    # TODO YANIV REMOVE SOMETIME
     def validation_step(self, batch, batch_idx):
         samples = self.sample(image_size=batch.shape[-2:], batch_size=1)
         val_loss = get_swd_scores(batch, samples)

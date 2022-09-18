@@ -10,7 +10,7 @@ from diffusion.diffusion_utils import cosine_noise_schedule, save_diffusion_samp
 
 class ConditionalDiffusion(LightningModule):
     def __init__(self, model, channels=3, timesteps=1000,
-                 initial_lr=2e-4,
+                 initial_lr=2e-4, training_target='noise',
                  auto_sample=True, sample_every_n_steps=1000):
         """
         Args:
@@ -22,6 +22,9 @@ class ConditionalDiffusion(LightningModule):
                 The amount of timesteps used to generate the noising schedule.
             initial_lr (float):
                 The initial learning rate for the diffusion training.
+            training_target (str):
+                The type of parameterization to train the backbone model on.
+                Can be either 'x0' or 'noise'.
             auto_sample (bool):
                 Should the model perform sampling during training.
                 If False, the following sampling parameters are ignored.
@@ -38,6 +41,8 @@ class ConditionalDiffusion(LightningModule):
         self.channels = channels
         self.model = model
         self.initial_lr = initial_lr
+        self.training_target = training_target.lower()
+        assert self.training_target in ['x0', 'noise']
 
         betas = cosine_noise_schedule(timesteps)
         betas = betas.detach().cpu().numpy() if isinstance(betas, torch.Tensor) else betas
@@ -81,14 +86,18 @@ class ConditionalDiffusion(LightningModule):
         else:
             fd_tensor = None
 
-        x_recon = self.predict_start_from_noise(
-            x, t=t, noise=self.model(torch.cat([condition_x, x], dim=1), noise_level, fd_tensor))
+        if self.training_target == 'x0':
+            x_recon = self.model(torch.cat([condition_x, x], dim=1), noise_level, fd_tensor)
+        else:
+            x_recon = self.predict_start_from_noise(x, t=t, noise=self.model(torch.cat([condition_x, x], dim=1),
+                                                                             noise_level, fd_tensor))
 
         if clip_denoised:
             x_recon.clamp_(-1., 1.)
 
         model_mean, posterior_log_variance = self.q_posterior(x_start=x_recon, x_t=x, t=t)
         return model_mean, posterior_log_variance
+
 
     def p_sample(self, x, t, clip_denoised=True, condition_x=None, frame_diff=None):
         model_mean, model_log_variance = self.p_mean_variance(
@@ -165,10 +174,13 @@ class ConditionalDiffusion(LightningModule):
                                 continuous_sqrt_alpha_hat=continuous_sqrt_alpha_hat.view(-1, 1, 1, 1),
                                 noise=noise)
 
-        noise_recon = self.model(
+        recon = self.model(
             torch.cat([x_in['CONDITION_IMG'], x_noisy], dim=1), continuous_sqrt_alpha_hat.view(-1), x_in.get('FRAME'))
 
-        return F.mse_loss(noise, noise_recon)
+        if self.training_target == 'x0':
+            return F.mse_loss(x_start, recon)
+        else:
+            return F.mse_loss(noise, recon)
 
     def training_step(self, batch, batch_idx):
         if self.auto_sample and self.step_counter % self.sample_every_n_steps == 0:
