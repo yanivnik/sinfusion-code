@@ -21,8 +21,7 @@ class NextNet(nn.Module):
             dims = [filters_per_layer] * depth
 
         time_dim = dims[0]
-        #emb_dim = time_dim * 2 if frame_conditioned else time_dim
-        emb_dim = time_dim * (in_channels // 3) if frame_conditioned else time_dim
+        emb_dim = time_dim * 2 if frame_conditioned else time_dim
         self.depth = depth
         self.layers = nn.ModuleList([])
 

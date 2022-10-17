@@ -66,6 +66,11 @@ BALLOONS_SIMPLE_CONFIG = Config(image_name='balloons.png',
                                 network_depth=16,
                                 network_filters=64)
 
+COWS_SIMPLE_CONFIG = Config(image_name='cows.png',
+                            crop_size=140,
+                            network_depth=16,
+                            network_filters=64)
+
 BALLOONS_COLLOSEUM_COMBINED_CONFIG = Config(image_name='balloons.png-colusseum_changed.png',
                                 crop_size=178,
                                 network_depth=16,
@@ -82,16 +87,14 @@ BALLOONS_SIMPLE_VS_PRETRAIN_CONFIG = Config(image_name='balloons_scale=0.729.png
                                             network_filters=64)
 
 MOUNTAINS3_SIMPLE_VS_PRETRAIN_CONFIG = Config(image_name='mountains3_scale=0.91_0.52.png',
-                                            crop_size=135,
-                                            network_depth=16,
-                                            network_filters=64,
-                                            available_gpus='0')
+                                              crop_size=135,
+                                              network_depth=16,
+                                              network_filters=64)
 
 TREE_SIMPLE_VS_PRETRAIN_CONFIG = Config(image_name='tree_scale=0.52_0.52.png',
                                         crop_size=125,
                                         network_depth=16,
-                                        network_filters=64,
-                                        available_gpus='2')
+                                        network_filters=64)
 
 LIGHTNING_SIMPLE_CONFIG = Config(image_name='lightning1.png',
                                  crop_size=160,
@@ -104,9 +107,9 @@ STARRY_NIGHT_SIMPLE_CONFIG = Config(image_name='starry_night.png',
                                     network_filters=64)
 
 COLUSSEUM_SIMPLE_CONFIG = Config(image_name='colusseum_changed.png',
-                                crop_size=178,
-                                network_depth=16,
-                                network_filters=64)
+                                 crop_size=178,
+                                 network_depth=16,
+                                 network_filters=64)
 
 MOUNTAINS3_SIMPLE_CONFIG = Config(image_name='mountains3.png',
                                   crop_size=168,
@@ -128,10 +131,20 @@ BIRDS3_SIMPLE_CONFIG = Config(image_name='birds_3.jpg',
                               network_depth=16,
                               network_filters=64)
 
+BIRDS_SIMPLE_CONFIG = Config(image_name='birds.png',
+                             crop_size=160,
+                             network_depth=16,
+                             network_filters=64)
+
 STONE_SIMPLE_CONFIG = Config(image_name='stone.png',
                              crop_size=(160, 230),
                              network_depth=16,
                              network_filters=64)
+
+MOUNTAINS_SIMPLE_CONFIG = Config(image_name='mountains.jpg',
+                                 crop_size=(360, 400),
+                                 network_depth=16,
+                                 network_filters=64)
 
 BIRDS3_SIMPLE_VS_PRETRAIN_CONFIG = Config(image_name='birds_3_scale=0.96_0.64.png',
                                         crop_size=158,
@@ -150,6 +163,12 @@ BALLOONS2_VIDEO_CONFIG = Config(image_name='air_balloons',
                                 crop_size=135,
                                 network_depth=16,
                                 network_filters=64)
+
+BALLOONS2_256_VIDEO_CONFIG = Config(image_name='air_balloons_256',
+                                    training_method='video',
+                                    crop_size=256,
+                                    network_depth=16,
+                                    network_filters=64)
 
 TORNADO_VIDEO_CONFIG = Config(image_name='tornado',
                               training_method='video',
