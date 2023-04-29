@@ -2,7 +2,6 @@
 
 # [ICML 2023] SinFusion - Training Diffusion Models on a Single Image or Video
 [![project](https://img.shields.io/badge/project-sinfusion-blue)](https://yanivnik.github.io/sinfusion) [![arxiv](https://img.shields.io/badge/arxiv-2211.11743-brightgreen)](https://arxiv.org/abs/2211.11743) [![Conference](https://img.shields.io/badge/ICML-2023-blueviolet)]()
-<a href=> Project </a> |
 
 Official PyTorch implementation of *"SinFusion - Training Diffusion Models on a Single Image or Video"*. 
 
