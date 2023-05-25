@@ -82,11 +82,12 @@ By default (if ```output_dir``` isn't specified, the generated images/videos wil
 If you find our project useful for your work please cite:
 
 ```
-@article{nikankin2022sinfusion,
+@inproceedings{nikankin2022sinfusion,
   title={SinFusion: Training Diffusion Models on a Single Image or Video},
   author={Nikankin, Yaniv and Haim, Niv and Irani, Michal},
-  journal={arXiv preprint arXiv:2211.11743},
-  year={2022}
+  booktitle={International Conference on Machine Learning},
+  organization={PMLR},
+  year={2023}
 }
 ```
 
