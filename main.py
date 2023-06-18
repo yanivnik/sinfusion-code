@@ -60,7 +60,7 @@ def train_video_predictor(cfg):
 
     # Create training datasets and data loaders
     frames = read_frames_from_dir(f'./images/video/{cfg.image_name}')
-    crop_size = (int(frames[0].shape[-2] * 0.95), int(frames[0].shape[-1:] * 0.95))
+    crop_size = (int(frames[0].shape[-2] * 0.95), int(frames[0].shape[-1] * 0.95))
     train_dataset = FrameSet(frames=frames, crop_size=crop_size)
     train_loader = DataLoader(train_dataset, batch_size=1, num_workers=4, shuffle=True)
 
