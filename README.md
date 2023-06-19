@@ -6,9 +6,11 @@
 Official PyTorch implementation of *"SinFusion - Training Diffusion Models on a Single Image or Video"*. 
 
 
-### Data
+### Data and Checkpoints
 
-You can download videos from this [Dropbox Videos Folder](https://www.dropbox.com/sh/75z6elt62i75kq4/AACFHqvo1L69zyY-JmhWO8eRa?dl=0) into ```./images``` folder.
+You can find training images, training video frames, and some sample checkpoints in the [Dropbox Folder](https://www.dropbox.com/sh/75z6elt62i75kq4/AACFHqvo1L69zyY-JmhWO8eRa?dl=0).
+
+You can download the training images and video frames from the ```images``` folder into a local ```./images``` folder.
 
 Note that a video is represented as a directory with PNG files in the format \<frame number\>.png,
 and should be placed within the ```./images/video``` folder.
@@ -20,6 +22,17 @@ some/path/sinfusion/images/video/my_video/
    3.png
    ...
 ```
+
+To download the checkpoints, download the ```checkpoints/lightning_logs``` directory from the Dropbox to a local ```./lightning_logs``` directory. The structure should be, for example - 
+```
+some/path/sinfusion/lightning_logs/
+    balloons.png/
+        image_balloons_sample_weights/checkpoints/last.ckpt
+    tornado/
+        video_tornado_sample_weights_predictor/checkpoints/last.ckpt
+        video_tornado_sample_weights_projector/checkpoints/last.ckpt
+```
+Following this you can directly sample the trained weights (using the default configuration in ```config.py```) with the generation command lines below (notice you need to use the relevant ```run_name```, for example - ```image_balloons_sample_weights``` or ```video_tornado_sample_weights```).
 
 ### Training
 
