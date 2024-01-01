@@ -91,6 +91,11 @@ python sample.py --task='video_interp' --image_name=hula_hoop --interpolation_ra
 
 By default (if ```output_dir``` isn't specified, the generated images/videos will be saved in the ```./outputs``` folder.
 
+
+### Evaluation
+
+For evaluating using NNFDIV metric (in Section 7.2), please check out the [NNF Diversity Repository](https://github.com/nivha/nnf_diversity).
+
 ## Citation
 If you find our project useful for your work please cite:
 
