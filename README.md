@@ -8,7 +8,7 @@ Official PyTorch implementation of *"SinFusion - Training Diffusion Models on a 
 
 ### Data and Checkpoints
 
-You can find training images, training video frames, and some sample checkpoints in the [Dropbox Folder](https://www.dropbox.com/sh/75z6elt62i75kq4/AACFHqvo1L69zyY-JmhWO8eRa?dl=0).
+You can find training images, training video frames, and some sample checkpoints in the [Dropbox Folder](https://www.dropbox.com/scl/fo/3457s9wu7azdsuirkhkqw/ACJBYcV8nqyznGQlz5utYro/Shared/SinFusion%20Data?dl=0&rlkey=aimqheajuxke1hah042j6gzpl&subfolder_nav_tracking=1).
 
 You can download the training images and video frames from the ```images``` folder into a local ```./images``` folder.
 
